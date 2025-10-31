@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface Conversation {
   id: string;
   title: string | null;
   createdAt: Date;
+  updatedAt?: Date;
   userId?: string;
 }
 
 export function useConversations() {
   const { data: session } = useSession();
+  const isGuest = !session?.user?.id;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,23 +29,35 @@ export function useConversations() {
           const response = await fetch('/api/conversations');
           if (response.ok) {
             const data = await response.json();
-            setConversations(data);
+            setConversations(
+              data.map((conv: any) => ({
+                ...conv,
+                createdAt: new Date(conv.createdAt),
+                updatedAt: conv.updatedAt ? new Date(conv.updatedAt) : undefined,
+              }))
+            );
           } else {
             throw new Error('Failed to fetch conversations');
           }
         } else {
           // Guest user - load from localStorage
-          const savedConversations = localStorage.getItem('guest_conversations');
+          if (typeof window === 'undefined') {
+            setConversations([]);
+            return;
+          }
+
+          const savedConversations = window.localStorage.getItem('guest_conversations');
           if (savedConversations) {
             try {
               const parsed = JSON.parse(savedConversations);
               setConversations(parsed.map((conv: any) => ({
                 ...conv,
-                createdAt: new Date(conv.createdAt)
+                createdAt: new Date(conv.createdAt),
+                updatedAt: conv.updatedAt ? new Date(conv.updatedAt) : undefined,
               })));
             } catch (e) {
               console.error('Error parsing saved conversations:', e);
-              localStorage.removeItem('guest_conversations');
+              window.localStorage.removeItem('guest_conversations');
               setConversations([]);
             }
           } else {
@@ -61,15 +75,25 @@ export function useConversations() {
     loadConversations();
   }, [session]);
 
-  // Save guest conversations to localStorage
-  const saveGuestConversations = (convs: Conversation[]) => {
-    if (!session?.user?.id) {
-      localStorage.setItem('guest_conversations', JSON.stringify(convs));
+  // Save guest conversations to localStorage (usando useCallback para evitar recreación)
+  const saveGuestConversations = useCallback((convs: Conversation[]) => {
+    if (!isGuest || typeof window === 'undefined') {
+      return;
     }
-  };
 
-  // Create new conversation
-  const createConversation = async (title?: string) => {
+    window.localStorage.setItem('guest_conversations', JSON.stringify(convs));
+  }, [isGuest]);
+
+  const removeGuestMessages = useCallback((conversationIdentifier: string) => {
+    if (!isGuest || typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.removeItem(`guest_messages_${conversationIdentifier}`);
+  }, [isGuest]);
+
+  // Create new conversation - usando useCallback para memoización
+  const createConversation = useCallback(async (title?: string) => {
     try {
       const response = await fetch('/api/conversations', {
         method: 'POST',
@@ -83,15 +107,26 @@ export function useConversations() {
 
       if (response.ok) {
         const newConversation = await response.json();
-        const updatedConversations = [newConversation, ...conversations];
-        setConversations(updatedConversations);
+        const normalizedConversation = {
+          ...newConversation,
+          createdAt: new Date(newConversation.createdAt),
+          updatedAt: newConversation.updatedAt ? new Date(newConversation.updatedAt) : undefined,
+        };
         
-        // Save to localStorage for guests
-        if (!session?.user?.id) {
-          saveGuestConversations(updatedConversations);
-        }
-        
-        return newConversation;
+        // Actualizar estado usando callback para obtener el valor más reciente
+        // Esto evita problemas con el closure y asegura que no haya doble renderizado
+        setConversations(prev => {
+          const updatedConversations = [normalizedConversation, ...prev];
+          
+          // Save to localStorage for guests
+          if (!session?.user?.id) {
+            saveGuestConversations(updatedConversations);
+          }
+          
+          return updatedConversations;
+        });
+
+        return normalizedConversation;
       } else {
         throw new Error('Failed to create conversation');
       }
@@ -99,10 +134,10 @@ export function useConversations() {
       console.error('Error creating conversation:', error);
       throw error;
     }
-  };
+  }, [session?.user?.id, saveGuestConversations]);
 
-  // Delete conversation
-  const deleteConversation = async (conversationId: string) => {
+  // Delete conversation - usando useCallback
+  const deleteConversation = useCallback(async (conversationId: string) => {
     try {
       if (session?.user?.id && !conversationId.startsWith('temp_')) {
         // Logged in user - delete from database
@@ -116,22 +151,27 @@ export function useConversations() {
         }
       }
 
-      // Update local state
-      const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-      setConversations(updatedConversations);
+      // Update local state usando callback
+      setConversations(prev => {
+        const updatedConversations = prev.filter(conv => conv.id !== conversationId);
+        
+        // Save to localStorage for guests
+        if (!session?.user?.id) {
+          saveGuestConversations(updatedConversations);
+        }
+        
+        return updatedConversations;
+      });
       
-      // Save to localStorage for guests
-      if (!session?.user?.id) {
-        saveGuestConversations(updatedConversations);
-      }
+      removeGuestMessages(conversationId);
     } catch (error) {
       console.error('Error deleting conversation:', error);
       throw error;
     }
-  };
+  }, [session?.user?.id, saveGuestConversations, removeGuestMessages]);
 
-  // Clear all conversations
-  const clearAllConversations = async () => {
+  // Clear all conversations - usando useCallback
+  const clearAllConversations = useCallback(async () => {
     try {
       if (session?.user?.id) {
         // Logged in user - clear from database
@@ -144,7 +184,17 @@ export function useConversations() {
         }
       } else {
         // Guest user - clear localStorage
-        localStorage.removeItem('guest_conversations');
+        if (typeof window !== 'undefined') {
+          // Usar un snapshot del estado actual
+          setConversations(prev => {
+            prev.forEach(conv => {
+              removeGuestMessages(conv.id);
+            });
+            return [];
+          });
+          window.localStorage.removeItem('guest_conversations');
+          return; // Early return para evitar el setConversations de abajo
+        }
       }
 
       setConversations([]);
@@ -152,7 +202,44 @@ export function useConversations() {
       console.error('Error clearing conversations:', error);
       throw error;
     }
-  };
+  }, [session?.user?.id, removeGuestMessages]);
+
+  // Listener para actualización de conversaciones (cuando se envía mensaje)
+  useEffect(() => {
+    const handleConversationUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const detail = customEvent.detail;
+      if (!detail || !detail.id) return;
+
+      setConversations(prev => {
+        let changed = false;
+        const next = prev.map(conv => {
+          if (conv.id !== detail.id) return conv;
+          changed = true;
+          return {
+            ...conv,
+            updatedAt: detail.lastMessageAt ? new Date(detail.lastMessageAt) : new Date(),
+          };
+        });
+
+        if (changed && !session?.user?.id) {
+          saveGuestConversations(next);
+        }
+
+        return changed ? next : prev;
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('conversation:updated', handleConversationUpdated);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('conversation:updated', handleConversationUpdated);
+      }
+    };
+  }, [session?.user?.id, saveGuestConversations]);
 
   return {
     conversations,

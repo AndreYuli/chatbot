@@ -32,41 +32,57 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   isLoading,
   error
 }) => {
+  const showWelcome = messages.length === 0 && !isLoading && !streamingMessage;
+  const showMessages = messages.length > 0 || isLoading || streamingMessage;
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto relative">
       {/* Model change warning removed - using only n8n */}
       
-      {messages.length === 0 && !isLoading && (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center max-w-md px-4">
-            <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg 
-                className="w-10 h-10 text-blue-600 dark:text-blue-400" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24" 
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              SAGES Chat
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Escribe tu mensaje para comenzar
-            </p>
+      {/* Mensaje de bienvenida - optimizado con transform en lugar de opacity */}
+      <div 
+        className={`flex items-center justify-center h-full transition-all duration-200 ${
+          showWelcome 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 -translate-y-2 absolute top-0 left-0 w-full pointer-events-none'
+        }`}
+        aria-hidden={!showWelcome}
+      >
+        <div className="text-center max-w-md px-4">
+          <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg 
+              className="w-10 h-10 text-blue-600 dark:text-blue-400" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+              />
+            </svg>
           </div>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            SAGES Chat
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Escribe tu mensaje para comenzar
+          </p>
         </div>
-      )}
+      </div>
       
-      <div className="space-y-6 p-4">
+      {/* Lista de mensajes - optimizado con transform */}
+      <div 
+        className={`space-y-6 p-4 transition-all duration-200 ${
+          showMessages 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 translate-y-2 absolute top-0 left-0 w-full pointer-events-none'
+        }`}
+        aria-hidden={!showMessages}
+      >
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
@@ -149,10 +165,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         
         {isLoading && !streamingMessage && (
-          <div className="flex items-center justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600 dark:text-gray-400">
-              Pensando...
+          <div className="flex items-center gap-3 py-4">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+            <span className="text-gray-600 dark:text-gray-400 text-sm italic">
+              Escribiendo...
             </span>
           </div>
         )}

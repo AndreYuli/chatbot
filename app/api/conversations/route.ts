@@ -141,23 +141,24 @@ export async function POST(req: NextRequest) {
 // DELETE /api/conversations - Delete all conversations
 export async function DELETE(req: NextRequest) {
   try {
-    // Get or create default user
-    let user = await prisma.user.findFirst();
+    const session = await getServerSession(authOptions);
     
-    if (!user) {
-      // Create a default user if none exists
-      user = await prisma.user.create({
-        data: {
-          email: 'default@example.com',
-          name: 'Default User',
-        },
-      });
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     // Delete only conversations belonging to the current user
     await prisma.conversation.deleteMany({
       where: {
-        userId: user.id,
+        userId: session.user.id,
       },
     });
     

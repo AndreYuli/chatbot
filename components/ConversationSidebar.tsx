@@ -1,13 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useConversations } from '@/hooks/useConversations';
 import { useSession } from 'next-auth/react';
+
+// Debounce hook para optimizar búsqueda
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 const ConversationSidebar: React.FC<{
   onConversationSelect?: (conversationId: string) => void;
 }> = ({ onConversationSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // Espera 300ms después de dejar de escribir
   const { data: session } = useSession();
   const {
     conversations,
@@ -19,8 +37,8 @@ const ConversationSidebar: React.FC<{
     isLoggedIn
   } = useConversations();
 
-  // Create a new conversation
-  const handleNewConversation = async () => {
+  // Create a new conversation - usando useCallback para evitar recreación
+  const handleNewConversation = useCallback(async () => {
     try {
       const newConversation = await createConversation('Nueva conversación');
       // Notify parent component to switch to the new conversation
@@ -31,10 +49,10 @@ const ConversationSidebar: React.FC<{
       console.error('Error creating conversation:', error);
       alert('Error al crear la conversación. Por favor, intenta de nuevo.');
     }
-  };
+  }, [createConversation, onConversationSelect]);
 
-  // Delete a specific conversation
-  const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
+  // Delete a specific conversation - usando useCallback
+  const handleDeleteConversation = useCallback(async (conversationId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering the conversation select
     
     // Confirm deletion
@@ -52,12 +70,10 @@ const ConversationSidebar: React.FC<{
       console.error('Error deleting conversation:', error);
       alert('Error al eliminar la conversación. Por favor, intenta de nuevo.');
     }
-  };
+  }, [deleteConversation, onConversationSelect]);
 
-  // Clear all conversations
-  const handleClearAllConversations = async () => {
-    if (conversations.length === 0) return;
-    
+  // Clear all conversations - usando useCallback
+  const handleClearAllConversations = useCallback(async () => {
     const confirmMessage = isLoggedIn 
       ? '¿Estás seguro de que quieres eliminar todas las conversaciones? Esta acción no se puede deshacer.'
       : '¿Estás seguro de que quieres eliminar todas las conversaciones de invitado?';
@@ -74,13 +90,18 @@ const ConversationSidebar: React.FC<{
         alert('Error al limpiar las conversaciones. Por favor, intenta de nuevo.');
       }
     }
-  };
+  }, [isLoggedIn, clearAllConversations, onConversationSelect]);
 
-  // Filter conversations based on search term
-  const filteredConversations = conversations.filter(conversation => {
-    if (!searchTerm) return true;
-    return conversation.title?.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  // Filter conversations - usando useMemo para evitar recalcular en cada render
+  const filteredConversations = useMemo(() => {
+    if (!debouncedSearchTerm) return conversations;
+    return conversations.filter(conversation => 
+      conversation.title?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    );
+  }, [conversations, debouncedSearchTerm]);
+
+  // Memoizar si hay conversaciones para evitar re-renders del botón
+  const hasConversations = useMemo(() => conversations.length > 0, [conversations.length]);
 
   return (
     <div className="flex flex-col h-full">
@@ -94,18 +115,20 @@ const ConversationSidebar: React.FC<{
           Nueva Conversación
         </button>
         
-        {conversations.length > 0 && (
-          <button
-            onClick={handleClearAllConversations}
-            className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors duration-200 flex items-center justify-center text-sm"
-          >
-            <span>🗑️ </span>
-            {isLoggedIn 
-              ? 'Vaciar Chat' 
-              : 'Limpiar Sesión'
-            }
-          </button>
-        )}
+        <button
+          onClick={handleClearAllConversations}
+          className={`w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md transition-all duration-200 flex items-center justify-center text-sm ${
+            hasConversations ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
+          }`}
+          disabled={!hasConversations}
+          aria-hidden={!hasConversations}
+        >
+          <span>🗑️ </span>
+          {isLoggedIn 
+            ? 'Vaciar Chat' 
+            : 'Limpiar Sesión'
+          }
+        </button>
       </div>
       
       <div className="px-4 pb-4">
@@ -142,67 +165,75 @@ const ConversationSidebar: React.FC<{
           </h3>
         </div>
         
-        {loading ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            Cargando...
-          </div>
-        ) : error ? (
-          <div className="p-4 text-center text-red-500 dark:text-red-400">
-            {error}
-          </div>
-        ) : (
-          <div className="space-y-1 px-2">
-            {filteredConversations.map((conversation) => (
-              <div 
-                key={conversation.id} 
-                className="flex items-center group"
+        {/* Loading state - oculto con CSS */}
+        <div className={`p-4 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
+          loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
+        }`}>
+          Cargando...
+        </div>
+        
+        {/* Error state - oculto con CSS */}
+        <div className={`p-4 text-center text-red-500 dark:text-red-400 transition-opacity duration-200 ${
+          error ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
+        }`}>
+          {error}
+        </div>
+        
+        {/* Main content - oculto con CSS cuando loading o error */}
+        <div className={`space-y-1 px-2 transition-opacity duration-200 ${
+          !loading && !error ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
+        }`}>
+          {filteredConversations.map((conversation) => (
+            <div 
+              key={conversation.id}
+              data-testid="conversation-item"
+              className="flex items-center group"
+            >
+              <button
+                onClick={() => onConversationSelect && onConversationSelect(conversation.id)}
+                className="flex-1 text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 truncate"
               >
-                <button
-                  onClick={() => onConversationSelect && onConversationSelect(conversation.id)}
-                  className="flex-1 text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 truncate"
-                >
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {conversation.title || 'Conversación sin título'}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    {new Date(conversation.createdAt).toLocaleDateString()}
-                    {!isLoggedIn && (
-                      <span className="text-orange-500">• Sesión</span>
-                    )}
-                  </div>
-                </button>
-                <button
-                  data-testid={`delete-conversation-${conversation.id}`}
-                  onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                  className="opacity-30 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all duration-200 flex-shrink-0"
-                  title="Eliminar conversación"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-            
-            {filteredConversations.length === 0 && !loading && (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                {isLoggedIn 
-                  ? 'No hay conversaciones aún' 
-                  : 'No hay conversaciones en esta sesión'
-                }
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {!isLoggedIn && conversations.length > 0 && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-center text-orange-600 dark:text-orange-400">
-            💡 Inicia sesión para guardar tus conversaciones permanentemente
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {conversation.title || 'Conversación sin título'}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  {new Date(conversation.updatedAt ?? conversation.createdAt).toLocaleDateString()}
+                  {!isLoggedIn && (
+                    <span className="text-orange-500">• Sesión</span>
+                  )}
+                </div>
+              </button>
+              <button
+                data-testid={`delete-conversation-${conversation.id}`}
+                onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                className="opacity-30 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all duration-200 flex-shrink-0"
+                title="Eliminar conversación"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          
+          <div className={`p-4 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
+            filteredConversations.length === 0 && !loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
+          }`}>
+            {isLoggedIn 
+              ? 'No hay conversaciones aún' 
+              : 'No hay conversaciones en esta sesión'
+            }
           </div>
         </div>
-      )}
+      </div>
+      
+      <div className={`p-4 border-t border-gray-200 dark:border-gray-700 transition-all duration-200 ${
+        !isLoggedIn && conversations.length > 0 ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
+      }`}>
+        <div className="text-xs text-center text-orange-600 dark:text-orange-400">
+          💡 Inicia sesión para guardar tus conversaciones permanentemente
+        </div>
+      </div>
     </div>
   );
 };

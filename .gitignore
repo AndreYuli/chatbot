@@ -44,6 +44,13 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/tests/screenshots/
+
+# archivos temporales de tests
+**/debug-*.spec.ts
+**/visual-*.spec.ts
+**/ui-flickering.spec.ts
+**/video-capture.spec.ts
 
 # python
 __pycache__/

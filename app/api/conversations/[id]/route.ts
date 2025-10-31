@@ -76,6 +76,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const conversationId = params.id;
+    const session = await getServerSession(authOptions);
     
     if (!conversationId) {
       return new Response(
@@ -89,17 +90,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    // Get or create default user
-    let user = await prisma.user.findFirst();
-    
-    if (!user) {
-      // Create a default user if none exists
-      user = await prisma.user.create({
-        data: {
-          email: 'default@example.com',
-          name: 'Default User',
-        },
-      });
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     // First check if the conversation exists and belongs to the user
@@ -121,7 +121,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    if (existingConversation.userId !== user.id) {
+    if (existingConversation.userId !== session.user.id) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized to delete this conversation' }),
         {
