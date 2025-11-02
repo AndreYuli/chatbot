@@ -11,6 +11,24 @@ const withNextIntl = require('next-intl/plugin')(
 );
 
 const nextConfig = {
+  // Mejorar hot reload en desarrollo
+  reactStrictMode: true,
+  
+  // Optimizar compilación
+  swcMinify: true,
+  
+  // Configuración de webpack para mejor hot reload
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // Mejorar hot reload en desarrollo
+      config.watchOptions = {
+        poll: 1000, // Verificar cambios cada segundo
+        aggregateTimeout: 300, // Esperar 300ms antes de recompilar
+      };
+    }
+    return config;
+  },
+  
   experimental: {
     serverComponentsExternalPackages: ['prisma'],
   },

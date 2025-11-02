@@ -139,31 +139,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         )}
         
-        {sources.length > 0 && (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h3 className="font-medium text-gray-900 dark:text-white mb-2">
-              Ver Fuentes
-            </h3>
-            <ul className="space-y-2">
-              {sources.map((source, index) => (
-                <li key={index} className="text-sm">
-                  <a 
-                    href={source.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    {source.title}
-                  </a>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
-                    {source.snippet}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
         {isLoading && !streamingMessage && (
           <div className="flex items-center gap-3 py-4">
             <div className="flex space-x-1">

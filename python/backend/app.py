@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from embeddings import add_pdf_to_collection, get_documents
 from llm import query_llm
+from cache import get_cached_response, save_to_cache
 
 load_dotenv()
 
@@ -120,6 +121,114 @@ def ask():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/chat', methods=['POST'])
+def chat():
+    """
+    Endpoint compatible con Next.js frontend para chat
+    Espera: { "message": "pregunta", "conversationId": "id", "settings": {...} }
+    Retorna: { "content": "respuesta", "sources": [...] }
+    """
+    data = request.get_json()
+    if 'message' not in data:
+        return jsonify({'error': 'Missing "message" in the request body'}), 400
+
+    message = data['message']
+    collection_name = os.getenv('QDRANT_COLLECTION', 'ESCUELA-SABATICA')
+
+    try:
+        print(f"💬 Nueva pregunta: {message}")
+        
+        # Respuestas directas para saludos y mensajes simples (sin llamadas API)
+        simple_greetings = {
+            'hola': '¡Hola! Soy tu asistente de la Escuela Sabática. ¿En qué puedo ayudarte hoy?',
+            'hello': 'Hello! I am your Sabbath School assistant. How can I help you today?',
+            'hi': 'Hi! How can I assist you with Sabbath School today?',
+            'buenos días': '¡Buenos días! ¿En qué puedo ayudarte con la Escuela Sabática?',
+            'buenas tardes': '¡Buenas tardes! ¿En qué te puedo ayudar?',
+            'buenas noches': '¡Buenas noches! ¿Tienes alguna pregunta sobre la Escuela Sabática?',
+            'gracias': '¡De nada! Estoy aquí para ayudarte.',
+            'thank you': 'You\'re welcome! I\'m here to help.',
+            'thanks': 'You\'re welcome!',
+            'adiós': '¡Hasta luego! Que tengas un buen día.',
+            'bye': 'Goodbye! Have a great day!',
+            'chao': '¡Chao! Vuelve pronto si tienes más preguntas.'
+        }
+        
+        message_lower = message.lower().strip()
+        if message_lower in simple_greetings:
+            print(f"💡 Respuesta directa (sin API): {message_lower}")
+            return jsonify({
+                'content': simple_greetings[message_lower],
+                'response': simple_greetings[message_lower],
+                'sources': [],
+                'from_cache': False,
+                'direct_response': True
+            }), 200
+        
+        # Intentar obtener del cache primero
+        cached_result = get_cached_response(message)
+        if cached_result:
+            return jsonify({
+                'content': cached_result['response'],
+                'response': cached_result['response'],
+                'sources': cached_result.get('sources', []),
+                'from_cache': True
+            }), 200
+        
+        # Obtener documentos relevantes
+        relevant_documents = get_documents(collection_name, message)
+        print(f"📚 Documentos encontrados: {len(relevant_documents)}")
+        
+        # Generar respuesta con Gemini
+        answer = query_llm(message, relevant_documents)
+        print(f"✅ Respuesta generada: {answer[:100]}...")
+        
+        # Extraer contenido de los documentos (pueden ser objetos Document de LangChain)
+        sources = []
+        if relevant_documents:
+            for i, doc in enumerate(relevant_documents[:3]):
+                # Si es un objeto Document, extraer page_content
+                if hasattr(doc, 'page_content'):
+                    content = doc.page_content
+                # Si es string, usar directamente
+                elif isinstance(doc, str):
+                    content = doc
+                else:
+                    content = str(doc)
+                
+                sources.append({
+                    'title': f'Documento {i+1}',
+                    'snippet': content[:200] + '...' if len(content) > 200 else content,
+                    'url': ''
+                })
+        
+        # Guardar en cache para futuras consultas
+        save_to_cache(message, answer, sources)
+        
+        # Formato compatible con el endpoint de Next.js
+        return jsonify({
+            'content': answer,
+            'response': answer,
+            'sources': sources,
+            'from_cache': False
+        }), 200
+    except Exception as e:
+        error_message = str(e)
+        print(f"❌ Error en /chat: {error_message}")
+        import traceback
+        traceback.print_exc()
+        
+        # Mensaje amigable para límite de cuota
+        if "429" in error_message or "Resource exhausted" in error_message or "cuota" in error_message.lower():
+            return jsonify({
+                'error': 'Límite de cuota de Gemini alcanzado',
+                'message': 'Has alcanzado el límite de solicitudes por minuto. Por favor, espera un momento e intenta nuevamente, o cambia al modelo n8n.',
+                'details': error_message
+            }), 429
+        
+        return jsonify({'error': error_message}), 500
+
+
 @app.route('/health', methods=['GET'])
 def health():
     collection_name = os.getenv('QDRANT_COLLECTION', 'ESCUELA-SABATICA')
@@ -129,6 +238,53 @@ def health():
         'qdrant_url': os.getenv('QDRANT_URL'),
         'default_collection': collection_name
     }), 200
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    """
+    Endpoint simplificado para subir archivos PDF a Qdrant
+    Compatible con el frontend Next.js
+    """
+    if 'file' not in request.files:
+        return jsonify({'error': 'No se encontró archivo en la solicitud'}), 400
+
+    file = request.files['file']
+    if not file or file.filename == '':
+        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+    
+    # Validar que sea un PDF
+    if not file.filename.endswith('.pdf'):
+        return jsonify({'error': 'Solo se permiten archivos PDF'}), 400
+    
+    try:
+        # Guardar archivo temporalmente
+        file_path = os.path.join('pdf_files', file.filename)
+        file.save(file_path)
+        print(f"💾 Archivo guardado: {file_path}")
+        
+        # Usar la colección de Escuela Sabática
+        collection_name = os.getenv('QDRANT_COLLECTION', 'ESCUELA-SABATICA')
+        print(f"📚 Procesando archivo para colección: {collection_name}")
+        
+        # Agregar el PDF a Qdrant
+        result = add_pdf_to_collection(collection_name, file_path, file.filename)
+        
+        print(f"✅ PDF procesado exitosamente: {result['pages_added']} páginas agregadas")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Archivo "{file.filename}" procesado y agregado a Qdrant',
+            'collection': collection_name,
+            'pages_added': result['pages_added'],
+            'filename': file.filename
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error procesando archivo: {str(e)}")
+        return jsonify({
+            'error': 'Error al procesar el archivo',
+            'details': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

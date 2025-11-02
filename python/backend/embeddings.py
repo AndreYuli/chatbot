@@ -1,5 +1,6 @@
 import os
 import uuid
+import time
 import PyPDF2
 import requests
 import google.generativeai as genai
@@ -11,21 +12,36 @@ print("🔄 Configurando Google Gemini para embeddings...")
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 print("✅ Google Gemini configurado")
 
-def generate_embedding(text: str) -> list:
+def generate_embedding(text: str, retry_delay=2) -> list:
     """
     Genera embedding usando Google Gemini
     Usa el modelo 'models/text-embedding-004' que es compatible con n8n
+    Incluye delay automático para evitar rate limiting
     """
-    try:
-        result = genai.embed_content(
-            model='models/text-embedding-004',
-            content=text,
-            task_type="retrieval_document"
-        )
-        return result['embedding']
-    except Exception as e:
-        print(f"❌ Error generando embedding: {e}")
-        raise
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            result = genai.embed_content(
+                model='models/text-embedding-004',
+                content=text,
+                task_type="retrieval_document"
+            )
+            # Pequeño delay después de cada llamada exitosa para evitar rate limiting
+            time.sleep(0.5)
+            return result['embedding']
+        except Exception as e:
+            error_msg = str(e)
+            if "429" in error_msg or "Resource exhausted" in error_msg:
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (attempt + 1)
+                    print(f"⚠️ Rate limit alcanzado. Esperando {wait_time}s antes de reintentar...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ Error generando embedding después de {max_retries} intentos: {e}")
+                    raise
+            else:
+                print(f"❌ Error generando embedding: {e}")
+                raise
 
 def get_qdrant_client():
     """Obtener cliente de Qdrant con configuración desde variables de entorno"""
@@ -229,8 +245,8 @@ def add_pdf_to_collection(collection_name, file_path, file_name):
 
 def get_documents(collection_name, question, limit=5):
     """
-    Buscar documentos relevantes en Qdrant usando REST API directamente
-    Para ESCUELA-SABATICA, obtiene documentos aleatorios ya que no tenemos embeddings para búsqueda semántica
+    Buscar documentos relevantes en Qdrant usando búsqueda semántica
+    Genera embedding de la pregunta y busca los documentos más similares
     """
     qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
     api_key = os.getenv('QDRANT_API_KEY', None)
@@ -239,21 +255,21 @@ def get_documents(collection_name, question, limit=5):
     if api_key:
         headers['api-key'] = api_key
     
-    # Para la colección ESCUELA-SABATICA, obtenemos más documentos aleatorios
-    # y dejamos que Gemini encuentre la información relevante
-    actual_limit = limit * 3 if collection_name == 'ESCUELA-SABATICA' else limit
-    
-    
-    # Obtener documentos aleatorios de la colección
     try:
+        # Generar embedding de la pregunta
+        print(f"🔍 Generando embedding para: {question}")
+        question_vector = generate_embedding(question)
+        
+        # Buscar documentos similares usando búsqueda semántica
         payload = {
-            "limit": actual_limit,
+            "vector": question_vector,
+            "limit": limit,
             "with_payload": True,
             "with_vector": False
         }
         
         response = requests.post(
-            f"{qdrant_url}/collections/{collection_name}/points/scroll",
+            f"{qdrant_url}/collections/{collection_name}/points/search",
             headers=headers,
             json=payload,
             timeout=10
@@ -261,7 +277,7 @@ def get_documents(collection_name, question, limit=5):
         
         if response.status_code == 200:
             data = response.json()
-            points = data.get('result', {}).get('points', [])
+            points = data.get('result', [])
             
             print(f"📄 Obtenidos {len(points)} documentos de {collection_name}")
             
@@ -269,9 +285,10 @@ def get_documents(collection_name, question, limit=5):
             for point in points:
                 if point.get('payload') and 'content' in point['payload']:
                     content = point['payload'].get('content', '')
+                    score = point.get('score', 0)
                     # Mostrar preview del contenido para debugging
                     preview = content[:100] + '...' if len(content) > 100 else content
-                    print(f"   - Doc preview: {preview}")
+                    print(f"   - Doc preview (score: {score:.3f}): {preview}")
                     
                     relevant_docs.append(
                         Document(
@@ -283,7 +300,7 @@ def get_documents(collection_name, question, limit=5):
             
             return relevant_docs
         else:
-            print(f"❌ Error en scroll: {response.status_code} - {response.text}")
+            print(f"❌ Error en búsqueda: {response.status_code} - {response.text}")
         
     except Exception as e:
         print(f"❌ Error en get_documents: {str(e)}")

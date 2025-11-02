@@ -23,25 +23,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
   return (
     <div 
       data-testid={message.role === 'user' ? 'message-user' : 'message-assistant'}
-      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
     >
       <div 
-        className={`max-w-[80%] rounded-2xl px-5 py-3 ${
+        className={`max-w-[80%] rounded-lg px-4 py-2 ${
           message.role === 'user' 
             ? 'bg-blue-600 text-white rounded-br-none' 
             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-none'
         }`}
       >
-        <div className="whitespace-pre-wrap text-base leading-relaxed">
+        <div className="whitespace-pre-wrap">
           {message.content}
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse"></span>
           )}
         </div>
         <div 
-          className={`text-sm mt-2 ${
+          className={`text-xs mt-1 ${
             message.role === 'user' 
-              ? 'text-blue-200' 
+              ? 'text-blue-100' 
               : 'text-gray-500 dark:text-gray-400'
           }`}
         >

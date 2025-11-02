@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ModelSelector, { AIModel } from './ModelSelector';
 
 interface ChatInputProps {
   input: string;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent, model: string) => void;
+  handleSubmit: (e: React.FormEvent, model: AIModel) => void;
   isLoading: boolean;
   disabled?: boolean;
+  currentModel: AIModel;
+  onModelChange: (model: AIModel) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -15,9 +18,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   handleInputChange,
   handleSubmit,
   isLoading,
-  disabled = false
+  disabled = false,
+  currentModel,
+  onModelChange
 }) => {
-  const model = 'n8n'; // Only n8n - no selection
   const [isUploading, setIsUploading] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
   
@@ -66,7 +70,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       e.preventDefault();
       return;
     }
-    handleSubmit(e, model);
+    handleSubmit(e, currentModel);
   };
   
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,7 +89,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       nombre: file.name,
       tamaño: file.size,
       tipo: file.type,
-      modelo: model
+      modelo: currentModel
     });
     
     setIsUploading(true);
@@ -93,7 +97,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('model', model); // Pasar el modelo seleccionado
+      formData.append('model', currentModel); // Pasar el modelo seleccionado
       
       // Usar nuestro proxy que enrutará según el modelo
       const response = await fetch('/api/upload', {
@@ -126,9 +130,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
   
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+    <div className="p-4">
       <form onSubmit={onSubmit} className="flex flex-col space-y-3">
-        {/* Model selection removed - using only n8n */}
+        {/* Selector de modelo */}
+        <ModelSelector
+          currentModel={currentModel}
+          onModelChange={onModelChange}
+          disabled={isLoading || disabled}
+        />
         
         <div className="flex space-x-2">
           <input
@@ -136,8 +145,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
             type="text"
             value={input}
             onChange={handleInputChange}
-            placeholder={disabled ? "Debes crear una nueva conversación para empezar a chatear" : "Escribe tu mensaje aquí..."}
-            className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-base"
+            placeholder={disabled ? "Crea una nueva conversación para empezar a chatear" : "Escribe tu mensaje aquí..."}
+            className="flex-1 p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={isLoading || disabled}
           />
           
@@ -153,7 +162,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             />
             <label
               htmlFor="file-upload"
-              className={`px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 cursor-pointer flex items-center justify-center ${
+              className={`px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors cursor-pointer flex items-center justify-center ${
                 (isLoading || disabled || isUploading) ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
@@ -197,11 +206,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </label>
           </div>
           
+          {/* Botón enviar */}
           <button
             data-testid="send-button"
             type="submit"
             disabled={isLoading || !input.trim() || disabled}
-            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {isLoading ? (
               <svg 

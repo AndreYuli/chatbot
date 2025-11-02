@@ -105,25 +105,25 @@ const ConversationSidebar: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4">
+      <div className="p-4 space-y-3">
         <button
           data-testid="new-conversation"
           onClick={handleNewConversation}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200 flex items-center justify-center mb-2"
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center justify-center font-medium"
         >
-          <span>+ </span>
+          <span className="text-lg mr-2">+</span>
           Nueva Conversación
         </button>
         
         <button
           onClick={handleClearAllConversations}
-          className={`w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md transition-all duration-200 flex items-center justify-center text-sm ${
+          className={`w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center justify-center text-sm font-medium ${
             hasConversations ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
           }`}
           disabled={!hasConversations}
           aria-hidden={!hasConversations}
         >
-          <span>🗑️ </span>
+          <span className="mr-2">🗑️</span>
           {isLoggedIn 
             ? 'Vaciar Chat' 
             : 'Limpiar Sesión'
@@ -131,13 +131,14 @@ const ConversationSidebar: React.FC<{
         </button>
       </div>
       
+      {/* Barra de búsqueda */}
       <div className="px-4 pb-4">
         <div className="relative">
           <input
             data-testid="sidebar-search"
             type="text"
-            placeholder="Buscar conversaciones"
-            className="w-full p-2 pl-10 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            placeholder="Buscar conversaciones..."
+            className="w-full p-2 pl-10 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -158,32 +159,41 @@ const ConversationSidebar: React.FC<{
         </div>
       </div>
       
+      {/* Lista de conversaciones */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 pb-2">
-          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             {isLoggedIn ? 'Conversaciones' : 'Conversaciones (Sesión)'}
           </h3>
         </div>
         
-        {/* Loading state - oculto con CSS */}
+        {/* Loading state */}
         <div className={`p-4 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
           loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
         }`}>
-          Cargando...
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
         
-        {/* Error state - oculto con CSS */}
-        <div className={`p-4 text-center text-red-500 dark:text-red-400 transition-opacity duration-200 ${
+        {/* Error state */}
+        <div className={`p-4 text-center transition-opacity duration-200 ${
           error ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
         }`}>
-          {error}
+          <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 rounded-md p-3 text-red-700 dark:text-red-200 text-sm">
+            {error}
+          </div>
         </div>
         
-        {/* Main content - oculto con CSS cuando loading o error */}
-        <div className={`space-y-1 px-2 transition-opacity duration-200 ${
+        {/* Conversaciones */}
+        <div className={`space-y-2 px-2 transition-opacity duration-200 ${
           !loading && !error ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
         }`}>
-          {filteredConversations.map((conversation) => (
+          {filteredConversations.map((conversation) => {
+            const aiModel = conversation.settings?.aiModel;
+            return (
             <div 
               key={conversation.id}
               data-testid="conversation-item"
@@ -191,22 +201,31 @@ const ConversationSidebar: React.FC<{
             >
               <button
                 onClick={() => onConversationSelect && onConversationSelect(conversation.id)}
-                className="flex-1 text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 truncate"
+                className="flex-1 text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate"
               >
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {conversation.title || 'Conversación sin título'}
+                <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                  <span className="truncate text-sm">{conversation.title || 'Conversación sin título'}</span>
+                  {aiModel && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${
+                      aiModel === 'python' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                        : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                    }`}>
+                      {aiModel === 'python' ? 'PY' : 'N8N'}
+                    </span>
+                  )}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                   {new Date(conversation.updatedAt ?? conversation.createdAt).toLocaleDateString()}
                   {!isLoggedIn && (
-                    <span className="text-orange-500">• Sesión</span>
+                    <span className="text-orange-600 dark:text-orange-400">• Sesión</span>
                   )}
                 </div>
               </button>
               <button
                 data-testid={`delete-conversation-${conversation.id}`}
                 onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                className="opacity-30 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all duration-200 flex-shrink-0"
+                className="opacity-0 group-hover:opacity-100 p-2 ml-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all duration-200 flex-shrink-0"
                 title="Eliminar conversación"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -214,24 +233,32 @@ const ConversationSidebar: React.FC<{
                 </svg>
               </button>
             </div>
-          ))}
+            );
+          })}
           
-          <div className={`p-4 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
+          <div className={`p-6 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
             filteredConversations.length === 0 && !loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
           }`}>
-            {isLoggedIn 
-              ? 'No hay conversaciones aún' 
-              : 'No hay conversaciones en esta sesión'
-            }
+            <div className="text-4xl mb-2">💬</div>
+            <p className="text-sm">
+              {isLoggedIn 
+                ? 'No hay conversaciones aún' 
+                : 'No hay conversaciones en esta sesión'
+              }
+            </p>
           </div>
         </div>
       </div>
       
+      {/* Aviso de sesión temporal */}
       <div className={`p-4 border-t border-gray-200 dark:border-gray-700 transition-all duration-200 ${
         !isLoggedIn && conversations.length > 0 ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
       }`}>
-        <div className="text-xs text-center text-orange-600 dark:text-orange-400">
-          💡 Inicia sesión para guardar tus conversaciones permanentemente
+        <div className="bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-md p-3">
+          <div className="text-xs text-center text-orange-800 dark:text-orange-200 flex items-center justify-center gap-2">
+            <span>💡</span>
+            <span>Inicia sesión para guardar permanentemente</span>
+          </div>
         </div>
       </div>
     </div>

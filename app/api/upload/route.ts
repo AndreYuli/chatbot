@@ -4,7 +4,6 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    // Single path: n8n only (Python backend removed)
     
     if (!file) {
       return new Response(
@@ -13,13 +12,13 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    console.log('📤 Archivo a subir (n8n):', {
+    console.log('📤 Archivo a subir (Python backend):', {
       nombre: file.name,
       tamaño: file.size
     });
     
-    // Unico manejador: n8n
-    return await handleN8nUpload(file);
+    // Usar backend Python para uploads
+    return await handlePythonUpload(file);
     
   } catch (error) {
     console.error('❌ Error en el proxy de upload:', error);
@@ -38,7 +37,88 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Manejador para n8n
+// Manejador para Python backend
+async function handlePythonUpload(file: File) {
+  try {
+    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:5000';
+    const uploadUrl = `${pythonBackendUrl}/upload`;
+    
+    console.log('🔄 Enviando archivo a Python backend:', {
+      fileName: file.name,
+      fileSize: file.size,
+      url: uploadUrl
+    });
+    
+    // Crear FormData para enviar al backend Python
+    const pythonFormData = new FormData();
+    pythonFormData.append('file', file);
+    
+    // Hacer el request al backend Python
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: pythonFormData,
+    });
+    
+    console.log('📥 Respuesta de Python backend:', {
+      status: response.status,
+      statusText: response.statusText
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Archivo subido exitosamente a Qdrant');
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Archivo procesado y agregado a Qdrant',
+          ...result
+        }), 
+        { 
+          status: 200, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Error del backend Python:', response.status, errorText);
+      
+      let errorMessage = `Error del backend Python: ${response.status}`;
+      if (response.status === 404) {
+        errorMessage = 'El endpoint de upload no se encuentra. Verifica que el backend Python esté corriendo.';
+      } else if (response.status === 400) {
+        errorMessage = 'Archivo inválido. Solo se aceptan archivos PDF.';
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          details: errorText
+        }), 
+        { 
+          status: response.status, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+  } catch (error) {
+    console.error('❌ Error conectando con Python backend:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'No se pudo conectar al backend Python. Verifica que esté corriendo en el puerto 5000.',
+        details: errorMessage
+      }), 
+      { 
+        status: 503, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+// Manejador para n8n (mantenido por si se necesita en el futuro)
 async function handleN8nUpload(file: File) {
   try {
     // Buscar si existe una URL de webhook para upload en n8n

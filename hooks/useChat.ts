@@ -126,7 +126,7 @@ export function useChat() {
   };
 
   const ensureConversation = useCallback(
-    async (userMessage: string): Promise<string> => {
+    async (userMessage: string, aiModel?: 'n8n' | 'python'): Promise<string> => {
       if (conversationId) {
         return conversationId;
       }
@@ -137,7 +137,10 @@ export function useChat() {
         const response = await fetch('/api/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({ 
+            title,
+            settings: aiModel ? { aiModel } : undefined,
+          }),
         });
 
         if (!response.ok) {
@@ -167,6 +170,7 @@ export function useChat() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         userId: 'guest',
+        settings: aiModel ? JSON.stringify({ aiModel }) : null,
       };
 
       setConversationId(tempId);
@@ -185,7 +189,7 @@ export function useChat() {
     [conversationId, session?.user?.id, saveGuestMessages]
   );
 
-  const handleSubmit = async (e: React.FormEvent, model: string) => {
+  const handleSubmit = async (e: React.FormEvent, model: 'n8n' | 'python' = 'n8n') => {
     e.preventDefault();
     
     if (!input.trim() || isLoading) return;
@@ -201,7 +205,7 @@ export function useChat() {
       // Create a new AbortController for this request
       const abortController = new AbortController();
 
-      const ensuredConversationId = await ensureConversation(userInput);
+      const ensuredConversationId = await ensureConversation(userInput, model);
 
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -216,8 +220,11 @@ export function useChat() {
         return next;
       });
 
+      // Route to the appropriate endpoint based on model
+      const endpoint = model === 'python' ? '/api/chat/python' : '/api/chat/send';
+
       // Call our API endpoint
-      const response = await fetch('/api/chat/send', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

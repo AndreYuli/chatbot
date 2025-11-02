@@ -9,6 +9,9 @@ interface Conversation {
   createdAt: Date;
   updatedAt?: Date;
   userId?: string;
+  settings?: {
+    aiModel?: 'n8n' | 'python';
+  } | null;
 }
 
 export function useConversations() {
@@ -34,6 +37,7 @@ export function useConversations() {
                 ...conv,
                 createdAt: new Date(conv.createdAt),
                 updatedAt: conv.updatedAt ? new Date(conv.updatedAt) : undefined,
+                settings: conv.settings ? (typeof conv.settings === 'string' ? JSON.parse(conv.settings) : conv.settings) : null,
               }))
             );
           } else {
@@ -93,7 +97,7 @@ export function useConversations() {
   }, [isGuest]);
 
   // Create new conversation - usando useCallback para memoización
-  const createConversation = useCallback(async (title?: string) => {
+  const createConversation = useCallback(async (title?: string, aiModel?: 'n8n' | 'python') => {
     try {
       const response = await fetch('/api/conversations', {
         method: 'POST',
@@ -102,6 +106,7 @@ export function useConversations() {
         },
         body: JSON.stringify({
           title: title || 'Nueva conversación',
+          settings: aiModel ? { aiModel } : undefined,
         }),
       });
 
@@ -111,6 +116,7 @@ export function useConversations() {
           ...newConversation,
           createdAt: new Date(newConversation.createdAt),
           updatedAt: newConversation.updatedAt ? new Date(newConversation.updatedAt) : undefined,
+          settings: newConversation.settings ? (typeof newConversation.settings === 'string' ? JSON.parse(newConversation.settings) : newConversation.settings) : null,
         };
         
         // Actualizar estado usando callback para obtener el valor más reciente
@@ -206,28 +212,49 @@ export function useConversations() {
 
   // Listener para actualización de conversaciones (cuando se envía mensaje)
   useEffect(() => {
-    const handleConversationUpdated = (event: Event) => {
+    const handleConversationUpdated = async (event: Event) => {
       const customEvent = event as CustomEvent<any>;
       const detail = customEvent.detail;
       if (!detail || !detail.id) return;
 
-      setConversations(prev => {
-        let changed = false;
-        const next = prev.map(conv => {
-          if (conv.id !== detail.id) return conv;
-          changed = true;
-          return {
-            ...conv,
-            updatedAt: detail.lastMessageAt ? new Date(detail.lastMessageAt) : new Date(),
-          };
-        });
-
-        if (changed && !session?.user?.id) {
-          saveGuestConversations(next);
+      // Si el usuario está logueado, refrescar desde la API para asegurar que la conversación aparezca
+      if (session?.user?.id) {
+        try {
+          const response = await fetch('/api/conversations');
+          if (response.ok) {
+            const data = await response.json();
+            setConversations(
+              data.map((conv: any) => ({
+                ...conv,
+                createdAt: new Date(conv.createdAt),
+                updatedAt: conv.updatedAt ? new Date(conv.updatedAt) : undefined,
+                settings: conv.settings ? (typeof conv.settings === 'string' ? JSON.parse(conv.settings) : conv.settings) : null,
+              }))
+            );
+          }
+        } catch (error) {
+          console.error('Error refreshing conversations:', error);
         }
+      } else {
+        // Para invitados, solo actualizar el timestamp
+        setConversations(prev => {
+          let changed = false;
+          const next = prev.map(conv => {
+            if (conv.id !== detail.id) return conv;
+            changed = true;
+            return {
+              ...conv,
+              updatedAt: detail.lastMessageAt ? new Date(detail.lastMessageAt) : new Date(),
+            };
+          });
 
-        return changed ? next : prev;
-      });
+          if (changed) {
+            saveGuestConversations(next);
+          }
+
+          return changed ? next : prev;
+        });
+      }
     };
 
     if (typeof window !== 'undefined') {

@@ -280,3 +280,8 @@ Este proyecto es privado y está destinado solo para uso educativo.
 
 - **Andre Yuli Lopez** - Desarrollo inicial
 - **Corporación Universitaria Adventista** - Proyecto académico
+
+
+backend cd python/backend
+pip install -r requirements.txt
+python app.py
