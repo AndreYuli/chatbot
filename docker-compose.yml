@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Backend Python (RAG con Gemini + Qdrant)
+  backend:
+    build:
+      context: ./python/backend
+      dockerfile: Dockerfile
+    container_name: chatbot_backend
+    environment:
+      - GEMINI_API_KEY=AIzaSyC89o4EhQhutOOiKQ79yofbypU5P3z0K5A
+      - QDRANT_URL=https://appqdrant.sages.icu
+      - QDRANT_API_KEY=9253bcc8145de2be70135bc786d63949
+      - QDRANT_COLLECTION=ESCUELA-SABATICA
+    volumes:
+      - backend_pdfs:/app/pdf_files
+      - backend_cache:/app/cache
+    networks:
+      - chatbot_internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Frontend Next.js
+  frontend:
+    build: .
+    container_name: chatbot_frontend
+    environment:
+      - DATABASE_URL=postgresql://postgres:9253bcc8145de2be70135bc786d63949@156.67.25.71:5432/sages
+      - NEXTAUTH_SECRET=L7Di7Zzp12bVUDNqApCG1wyCGueAcPIpQj3IDYrQMz8=
+      - NEXTAUTH_URL=https://escuelasabatica.sages.icu
+      - GOOGLE_CLIENT_ID=76032541326-rfl8ruasnk14octbmhcvc3r06j84c5p5.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - PYTHON_BACKEND_URL=http://backend:5000
+      - NEXT_PUBLIC_APP_NAME=SAGES Chat
+      - DEFAULT_LOCALE=es-ES
+      - SUPPORTED_LOCALES=es-ES,en-US,es-CO
+    depends_on:
+      - backend
+    networks:
+      - chatbot_internal
+      - traefik_public
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.escuelasabatica-https.rule=Host(`escuelasabatica.sages.icu`)"
+        - "traefik.http.routers.escuelasabatica-https.entrypoints=websecure"
+        - "traefik.http.routers.escuelasabatica-https.tls.certresolver=le"
+        - "traefik.http.routers.escuelasabatica-https.tls=true"
+        - "traefik.http.services.escuelasabatica-service.loadbalancer.server.port=3000"
+        - "traefik.http.routers.escuelasabatica-https.service=escuelasabatica-service"
+
+volumes:
+  backend_pdfs:
+  backend_cache:
+
+networks:
+  chatbot_internal:
+  traefik_public:
+    external: true
