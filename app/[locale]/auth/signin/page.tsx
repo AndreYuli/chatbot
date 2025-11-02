@@ -53,7 +53,7 @@ export default function SignIn() {
             </div>
           </div>
           <h2 className="mt-6 text-center text-4xl font-extrabold text-gray-900 dark:text-white">
-            Bienvenido Al Chat De Escuela Sabatica
+            Bienvenido al chat con la Escuela Sabatica
           </h2>
           <p className="mt-2 text-center text-base text-gray-600 dark:text-gray-400">
             Inicia sesión para guardar tu historial de conversaciones
