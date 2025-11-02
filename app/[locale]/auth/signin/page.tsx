@@ -41,12 +41,19 @@ export default function SignIn() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">S</span>
+            <div className="w-32 h-32 bg-blue-600 rounded-full flex flex-col items-center justify-center p-4 shadow-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z" />
+                <path d="M19 16h-12a2 2 0 0 0 -2 2" />
+                <path d="M12 7v6" />
+                <path d="M10 9h4" />
+              </svg>
+              <span className="text-white text-base font-bold mt-2">SAGES</span>
             </div>
           </div>
           <h2 className="mt-6 text-center text-4xl font-extrabold text-gray-900 dark:text-white">
-            Bienvenido a SAGES Chat
+            Bienvenido Al Chat De Escuela Sabatica
           </h2>
           <p className="mt-2 text-center text-base text-gray-600 dark:text-gray-400">
             Inicia sesión para guardar tu historial de conversaciones
