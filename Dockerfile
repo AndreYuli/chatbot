@@ -36,7 +36,7 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 # Instalar OpenSSL para Prisma
-RUN apk add --no-cache openssl1.1-compat
+RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
