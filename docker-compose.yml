@@ -3,10 +3,10 @@ version: '3.8'
 services:
   # Backend Python (RAG con Gemini + Qdrant)
   backend:
+    image: chatbot-backend:latest
     build:
       context: ./python/backend
       dockerfile: Dockerfile
-    container_name: chatbot_backend
     environment:
       - GEMINI_API_KEY=AIzaSyC89o4EhQhutOOiKQ79yofbypU5P3z0K5A
       - QDRANT_URL=https://appqdrant.sages.icu
@@ -17,7 +17,6 @@ services:
       - backend_cache:/app/cache
     networks:
       - chatbot_internal
-    restart: always
     deploy:
       resources:
         limits:
@@ -26,8 +25,8 @@ services:
 
   # Frontend Next.js
   frontend:
+    image: chatbot-frontend:latest
     build: .
-    container_name: chatbot_frontend
     environment:
       - DATABASE_URL=postgresql://postgres:9253bcc8145de2be70135bc786d63949@156.67.25.71:5432/sages
       - NEXTAUTH_SECRET=L7Di7Zzp12bVUDNqApCG1wyCGueAcPIpQj3IDYrQMz8=
@@ -43,7 +42,6 @@ services:
     networks:
       - chatbot_internal
       - traefik_public
-    restart: always
     deploy:
       resources:
         limits:
