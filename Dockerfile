@@ -1,29 +1,51 @@
-FROM node:18-alpine AS builder
-
+FROM node:18-alpine AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-RUN npm i -g pnpm@8
+RUN npm install -g pnpm@8
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
-RUN pnpm i --frozen-lockfile
-
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN NEXT_TELEMETRY_DISABLED=1 pnpm build
+ENV NEXT_TELEMETRY_DISABLED 1
+
+RUN npm install -g pnpm@8 && \
+    pnpm prisma generate && \
+    pnpm build
 
 FROM node:18-alpine AS runner
-
 WORKDIR /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
 
-COPY --from=builder /app/.next/standalone ./
-
-COPY --from=builder /app/.next/static ./.next/static
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
+RUN mkdir .next && chown nextjs:nodejs .next
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copiar archivos de Prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copiar archivos de next-intl
+COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
+
+USER nextjs
+
 EXPOSE 3000
 
-CMD ["node","server.js"]
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server.js"]

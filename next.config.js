@@ -11,6 +11,9 @@ const withNextIntl = require('next-intl/plugin')(
 );
 
 const nextConfig = {
+  // Standalone output para Docker
+  output: 'standalone',
+  
   // Mejorar hot reload en desarrollo
   reactStrictMode: true,
   
