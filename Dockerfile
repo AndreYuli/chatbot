@@ -41,16 +41,17 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# Copiar archivos públicos si existen
+COPY --from=builder /app/public* ./public* || true
 
 RUN mkdir .next && chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copiar archivos de Prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Copiar node_modules necesarios para Prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma* ./node_modules/.prisma* || true
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma* ./node_modules/@prisma* || true
 
 # Copiar archivos de next-intl
 COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
