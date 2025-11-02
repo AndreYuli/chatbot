@@ -6,7 +6,7 @@ services:
     build:
       context: ./python/backend
       dockerfile: Dockerfile
-    image: ghcr.io/andreyuli/chatbot-backend:latest
+    image: chatbot-backend:latest
     environment:
       - GEMINI_API_KEY=AIzaSyC89o4EhQhutOOiKQ79yofbypU5P3z0K5A
       - QDRANT_URL=https://appqdrant.sages.icu
@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/andreyuli/chatbot-frontend:latest
+    image: chatbot-frontend:latest
     environment:
       - DATABASE_URL=postgresql://postgres:9253bcc8145de2be70135bc786d63949@156.67.25.71:5432/sages
       - NEXTAUTH_SECRET=L7Di7Zzp12bVUDNqApCG1wyCGueAcPIpQj3IDYrQMz8=
