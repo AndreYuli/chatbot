@@ -29,14 +29,14 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       id: 'n8n' as AIModel,
       name: 'n8n (Gemini)',
       description: 'Gemini + Qdrant + Redis',
-      icon: '🤖',
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 4m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" /><path d="M12 2v2" /><path d="M9 12v9" /><path d="M15 12v9" /><path d="M5 16l4 -2" /><path d="M15 14l4 2" /><path d="M9 18h6" /><path d="M10 8v.01" /><path d="M14 8v.01" /></svg>,
       color: 'blue'
     },
     {
       id: 'python' as AIModel,
       name: 'Python RAG',
       description: 'Gemini + Qdrant directo',
-      icon: '🐍',
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9h-7a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h3" /><path d="M12 15h7a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-3" /><path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2 -2v-4" /><path d="M11 6l0 .01" /><path d="M13 18l0 .01" /></svg>,
       color: 'green'
     }
   ];
@@ -54,7 +54,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
         }`}
       >
-        <span className="text-xl">{currentModelData?.icon}</span>
+        <span className="text-xl flex items-center">{currentModelData?.icon}</span>
         <div className="flex flex-col items-start">
           <span className="text-sm font-medium text-gray-900 dark:text-white">
             {currentModelData?.name}
@@ -100,7 +100,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                       : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  <span className="text-2xl">{model.icon}</span>
+                  <span className="text-2xl flex items-center">{model.icon}</span>
                   <div className="flex-1 text-left">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">

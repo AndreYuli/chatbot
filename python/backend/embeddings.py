@@ -12,20 +12,32 @@ print("🔄 Configurando Google Gemini para embeddings...")
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 print("✅ Google Gemini configurado")
 
-def generate_embedding(text: str, retry_delay=2) -> list:
+def generate_embedding(text: str, task_type=None, retry_delay=2) -> list:
     """
     Genera embedding usando Google Gemini
     Usa el modelo 'models/text-embedding-004' que es compatible con n8n
     Incluye delay automático para evitar rate limiting
+    
+    Args:
+        text: Texto para generar embedding
+        task_type: None para compatibilidad con n8n, o 'retrieval_document'/'retrieval_query' si se especifica
+        retry_delay: Tiempo de espera entre reintentos
+    
+    IMPORTANTE: n8n NO especifica task_type, así que usamos None por defecto
+    para que los embeddings sean compatibles con las búsquedas de n8n
     """
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            result = genai.embed_content(
-                model='models/text-embedding-004',
-                content=text,
-                task_type="retrieval_document"
-            )
+            # Si task_type es None, no lo pasamos (comportamiento por defecto de n8n)
+            embed_params = {
+                'model': 'models/text-embedding-004',
+                'content': text
+            }
+            if task_type is not None:
+                embed_params['task_type'] = task_type
+                
+            result = genai.embed_content(**embed_params)
             # Pequeño delay después de cada llamada exitosa para evitar rate limiting
             time.sleep(0.5)
             return result['embedding']
@@ -247,6 +259,8 @@ def get_documents(collection_name, question, limit=5):
     """
     Buscar documentos relevantes en Qdrant usando búsqueda semántica
     Genera embedding de la pregunta y busca los documentos más similares
+    
+    IMPORTANTE: Usa task_type=None para compatibilidad con n8n
     """
     qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
     api_key = os.getenv('QDRANT_API_KEY', None)
@@ -256,17 +270,28 @@ def get_documents(collection_name, question, limit=5):
         headers['api-key'] = api_key
     
     try:
-        # Generar embedding de la pregunta
-        print(f"🔍 Generando embedding para: {question}")
-        question_vector = generate_embedding(question)
+        # Generar embedding SIN task_type para compatibilidad con n8n
+        print(f"🔍 Generando embedding para búsqueda (modo n8n compatible): {question}")
+        question_vector = generate_embedding(question, task_type=None)
+        
+        if not question_vector:
+            print("❌ Error: No se pudo generar el vector de la pregunta")
+            return []
+        
+        print(f"✅ Vector generado exitosamente (dimensión: {len(question_vector)})")
         
         # Buscar documentos similares usando búsqueda semántica
         payload = {
             "vector": question_vector,
             "limit": limit,
             "with_payload": True,
-            "with_vector": False
+            "with_vector": False,
+            "score_threshold": 0.3  # Umbral más bajo para encontrar más resultados
         }
+        
+        print(f"🔎 Buscando en Qdrant: {qdrant_url}/collections/{collection_name}/points/search")
+        print(f"   - Limit: {limit}")
+        print(f"   - Score threshold: 0.3")
         
         response = requests.post(
             f"{qdrant_url}/collections/{collection_name}/points/search",
@@ -275,37 +300,44 @@ def get_documents(collection_name, question, limit=5):
             timeout=10
         )
         
+        print(f"📡 Respuesta de Qdrant: Status {response.status_code}")
+        
         if response.status_code == 200:
             data = response.json()
             points = data.get('result', [])
             
-            print(f"📄 Obtenidos {len(points)} documentos de {collection_name}")
+            print(f"� Resultados encontrados: {len(points)}")
+            
+            if not points:
+                print("⚠️  No se encontraron documentos relevantes")
+                print("   Esto puede significar que:")
+                print("   1. La colección está vacía (points_count = 0)")
+                print("   2. El score threshold es muy alto")
+                print("   3. Los embeddings no coinciden (diferentes task_types)")
+                return []
             
             relevant_docs = []
             for point in points:
                 if point.get('payload') and 'content' in point['payload']:
-                    content = point['payload'].get('content', '')
                     score = point.get('score', 0)
-                    # Mostrar preview del contenido para debugging
-                    preview = content[:100] + '...' if len(content) > 100 else content
-                    print(f"   - Doc preview (score: {score:.3f}): {preview}")
+                    content = point['payload']['content']
                     
-                    relevant_docs.append(
-                        Document(
-                            doc_id=str(point.get('id', '')),
-                            content=content,
-                            metadata=point['payload'].get('metadata', {})
-                        )
-                    )
+                    print(f"   📄 Doc encontrado (score: {score:.3f}): {content[:100]}...")
+                    
+                    relevant_docs.append(Document(
+                        doc_id=str(point.get('id', '')),
+                        content=content,
+                        metadata=point['payload'].get('metadata', {})
+                    ))
             
+            print(f"📚 Total de documentos procesados: {len(relevant_docs)}")
             return relevant_docs
         else:
-            print(f"❌ Error en búsqueda: {response.status_code} - {response.text}")
-        
+            print(f"❌ Error en la búsqueda de Qdrant: {response.status_code} - {response.text}")
+            return []
+            
     except Exception as e:
-        print(f"❌ Error en get_documents: {str(e)}")
+        print(f"❌ Error en get_documents: {e}")
         import traceback
         traceback.print_exc()
-    
-    return []
-    
+        return []
