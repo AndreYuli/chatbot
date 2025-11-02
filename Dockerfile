@@ -49,6 +49,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copiar archivos de next-intl
 COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
 
+# Copiar schema de Prisma para migraciones
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
 USER nextjs
 
 EXPOSE 3000
