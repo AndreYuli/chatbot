@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -32,8 +33,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-none'
         }`}
       >
-        <div className="whitespace-pre-wrap">
-          {message.content}
+        <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-headings:my-2">
+          {message.role === 'assistant' ? (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                ul: ({ children }) => <ul className="space-y-1 mb-3">{children}</ul>,
+                ol: ({ children }) => <ol className="space-y-1 mb-3">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed pl-0">{children}</li>,
+                h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-3">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-3">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-2">{children}</h3>,
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          ) : (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          )}
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse"></span>
           )}

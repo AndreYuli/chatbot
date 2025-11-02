@@ -7,6 +7,75 @@ type ConversationRecord = Awaited<ReturnType<typeof prisma.conversation.findUniq
 
 export const runtime = 'nodejs'; // SSE estable
 
+// Función helper para generar un título conversacional
+function generateConversationTitle(message: string): string {
+  // Limpiar el mensaje
+  const cleanMessage = message.trim();
+  
+  // Si el mensaje es muy corto (menos de 10 caracteres), usarlo completo
+  if (cleanMessage.length <= 10) {
+    return cleanMessage;
+  }
+  
+  // Si el mensaje es una pregunta, usar hasta el signo de interrogación
+  if (cleanMessage.includes('?')) {
+    const questionPart = cleanMessage.split('?')[0] + '?';
+    if (questionPart.length <= 60) {
+      return questionPart;
+    }
+  }
+  
+  // Buscar patrones comunes y generar títulos descriptivos
+  const lowerMessage = cleanMessage.toLowerCase();
+  
+  // Patrones de preguntas sobre lecciones
+  if (lowerMessage.match(/lecci[oó]n\s*\d+/)) {
+    const match = cleanMessage.match(/lecci[oó]n\s*\d+/i);
+    if (match) {
+      return `Pregunta sobre ${match[0]}`;
+    }
+  }
+  
+  // Patrones de temas de Escuela Sabática
+  if (lowerMessage.includes('escuela sab')) {
+    return 'Consulta sobre Escuela Sabática';
+  }
+  
+  // Patrones generales de preguntas
+  if (lowerMessage.startsWith('qué') || lowerMessage.startsWith('que')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  if (lowerMessage.startsWith('cómo') || lowerMessage.startsWith('como')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  if (lowerMessage.startsWith('cuál') || lowerMessage.startsWith('cual')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  if (lowerMessage.startsWith('cuándo') || lowerMessage.startsWith('cuando')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  if (lowerMessage.startsWith('dónde') || lowerMessage.startsWith('donde')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  if (lowerMessage.startsWith('por qué') || lowerMessage.startsWith('por que')) {
+    return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+  }
+  
+  // Para otros casos, usar las primeras palabras significativas
+  const words = cleanMessage.split(/\s+/);
+  if (words.length <= 8) {
+    return cleanMessage;
+  }
+  
+  // Tomar las primeras 8 palabras
+  return words.slice(0, 8).join(' ') + '...';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -36,7 +105,7 @@ export async function POST(req: NextRequest) {
       if (!conversationIdToUse) {
         const created = await prisma.conversation.create({
           data: {
-            title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+            title: generateConversationTitle(message),
             userId,
             settings: JSON.stringify({ model: selectedModel }),
           },
@@ -71,7 +140,7 @@ export async function POST(req: NextRequest) {
           await prisma.conversation.update({
             where: { id: conversation.id },
             data: {
-              title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+              title: generateConversationTitle(message),
             },
           });
 

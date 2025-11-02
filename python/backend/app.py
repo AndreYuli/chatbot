@@ -125,7 +125,7 @@ def ask():
 def chat():
     """
     Endpoint compatible con Next.js frontend para chat
-    Espera: { "message": "pregunta", "conversationId": "id", "settings": {...} }
+    Espera: { "message": "pregunta", "conversationId": "id", "settings": {...}, "history": [...] }
     Retorna: { "content": "respuesta", "sources": [...] }
     """
     data = request.get_json()
@@ -133,6 +133,7 @@ def chat():
         return jsonify({'error': 'Missing "message" in the request body'}), 400
 
     message = data['message']
+    conversation_history = data.get('history', [])  # Historial de conversación
     collection_name = os.getenv('QDRANT_COLLECTION', 'ESCUELA-SABATICA')
 
     try:
@@ -165,7 +166,27 @@ def chat():
                 'direct_response': True
             }), 200
         
-        # Intentar obtener del cache primero
+        # Construir query contextual con historial reciente
+        # Priorizar la pregunta actual pero incluir contexto si es una pregunta de seguimiento
+        contextual_query = message
+        if conversation_history and len(conversation_history) > 0:
+            # Tomar los últimos 10 mensajes para contexto
+            recent_messages = conversation_history[-10:] if len(conversation_history) >= 10 else conversation_history
+            context_parts = []
+            for msg in recent_messages:
+                if msg.get('role') == 'user':
+                    context_parts.append(msg.get('content', ''))
+            
+            # Si hay contexto previo y la pregunta actual es corta (probablemente de seguimiento)
+            if context_parts and len(message.split()) < 8:
+                # Combinar los últimos 2 mensajes del usuario con más peso en la pregunta actual
+                recent_context = ' '.join(context_parts[-2:])
+                contextual_query = f"{message} {recent_context}"
+                print(f"🔗 Query contextual (pregunta corta): {contextual_query}")
+            else:
+                print(f"🔗 Query simple: {message}")
+        
+        # Intentar obtener del cache primero (usando solo el mensaje actual)
         cached_result = get_cached_response(message)
         if cached_result:
             return jsonify({
@@ -175,8 +196,8 @@ def chat():
                 'from_cache': True
             }), 200
         
-        # Obtener documentos relevantes
-        relevant_documents = get_documents(collection_name, message)
+        # Obtener documentos relevantes usando query contextual
+        relevant_documents = get_documents(collection_name, contextual_query)
         print(f"📚 Documentos encontrados: {len(relevant_documents)}")
         
         # Generar respuesta con Gemini

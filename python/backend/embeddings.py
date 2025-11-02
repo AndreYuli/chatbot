@@ -185,15 +185,16 @@ def add_pdf_to_collection(collection_name, file_path, file_name):
     print("🔄 Generando embeddings...")
     points = []
     for i, doc in enumerate(documents):
-        # Generar embedding usando Google Gemini
+        # Generar embedding usando Google Gemini (sin task_type, igual que n8n)
         vector = generate_embedding(doc.content)
         
         # Crear punto en formato dict para REST API
+        # IMPORTANTE: n8n usa 'content' como campo principal
         point = {
             'id': str(uuid.uuid4()),
             'vector': vector,
             'payload': {
-                'content': doc.content,
+                'content': doc.content,  # n8n usa 'content'
                 'metadata': doc.metadata
             }
         }
@@ -281,17 +282,18 @@ def get_documents(collection_name, question, limit=5):
         print(f"✅ Vector generado exitosamente (dimensión: {len(question_vector)})")
         
         # Buscar documentos similares usando búsqueda semántica
+        # Aumentar limit a 8 para obtener más contexto (n8n usa 4)
         payload = {
             "vector": question_vector,
-            "limit": limit,
+            "limit": 8,  # Aumentado de 4 a 8 para mejor contexto
             "with_payload": True,
-            "with_vector": False,
-            "score_threshold": 0.3  # Umbral más bajo para encontrar más resultados
+            "with_vector": False
+            # SIN score_threshold - n8n no lo usa por defecto
         }
         
         print(f"🔎 Buscando en Qdrant: {qdrant_url}/collections/{collection_name}/points/search")
-        print(f"   - Limit: {limit}")
-        print(f"   - Score threshold: 0.3")
+        print(f"   - Limit: 8 (aumentado para más contexto)")
+        print(f"   - Sin score_threshold (compatible con n8n)")
         
         response = requests.post(
             f"{qdrant_url}/collections/{collection_name}/points/search",
@@ -318,16 +320,19 @@ def get_documents(collection_name, question, limit=5):
             
             relevant_docs = []
             for point in points:
-                if point.get('payload') and 'content' in point['payload']:
+                payload = point.get('payload', {})
+                # n8n usa 'content' como campo principal
+                content = payload.get('content', payload.get('text', ''))
+                
+                if content:
                     score = point.get('score', 0)
-                    content = point['payload']['content']
                     
                     print(f"   📄 Doc encontrado (score: {score:.3f}): {content[:100]}...")
                     
                     relevant_docs.append(Document(
                         doc_id=str(point.get('id', '')),
                         content=content,
-                        metadata=point['payload'].get('metadata', {})
+                        metadata=payload.get('metadata', {})
                     ))
             
             print(f"📚 Total de documentos procesados: {len(relevant_docs)}")

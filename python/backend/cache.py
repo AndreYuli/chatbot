@@ -38,7 +38,11 @@ def get_cached_response(question: str) -> dict | None:
             return None
         
         print(f"✅ Respuesta obtenida del cache para: {question[:50]}...")
-        return cached_data['response']
+        # Devolver el diccionario completo con response y sources
+        return {
+            'response': cached_data['response'],
+            'sources': cached_data.get('sources', [])
+        }
     
     except Exception as e:
         print(f"⚠️ Error leyendo cache: {e}")

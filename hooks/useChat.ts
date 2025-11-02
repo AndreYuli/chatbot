@@ -223,6 +223,12 @@ export function useChat() {
       // Route to the appropriate endpoint based on model
       const endpoint = model === 'python' ? '/api/chat/python' : '/api/chat/send';
 
+      // Prepare conversation history for Python (last 10 messages for better context)
+      const conversationHistory = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
       // Call our API endpoint
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -232,6 +238,7 @@ export function useChat() {
         body: JSON.stringify({
           message: userInput,
           conversationId: ensuredConversationId,
+          history: conversationHistory, // Send conversation history
           settings: {
             topK: 5,
             temperature: 0.7,
