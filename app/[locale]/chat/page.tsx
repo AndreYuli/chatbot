@@ -18,7 +18,6 @@ export default function ChatPage() {
   const [currentModel, setCurrentModel] = useState<AIModel>('n8n'); // Default: n8n
   const [pendingModel, setPendingModel] = useState<AIModel | null>(null);
   const [showModelChangeModal, setShowModelChangeModal] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar cerrado en móvil por defecto
   const { data: session, status } = useSession();
   const [previousSessionState, setPreviousSessionState] = useState<boolean | null>(null);
   const { conversations } = useConversations();
@@ -47,7 +46,6 @@ export default function ChatPage() {
     isSyncingRef.current = true;
     setSelectedConversationId(convId);
     setConversationId(convId);
-    setSidebarOpen(false); // Cerrar sidebar en móvil al seleccionar conversación
     
     // Cargar el modelo de la conversación seleccionada
     const conversation = conversations.find(c => c.id === convId);
@@ -161,24 +159,9 @@ export default function ChatPage() {
     setPendingModel(null);
     setShowModelChangeModal(false);
   };
-
-  // Manejar preguntas sugeridas
-  const handleSuggestedQuestion = (question: string) => {
-    // Simular que el usuario escribió la pregunta y la envió
-    const syntheticEvent = {
-      preventDefault: () => {},
-    } as React.FormEvent;
-    
-    handleInputChange({ target: { value: question } } as React.ChangeEvent<HTMLInputElement>);
-    
-    // Esperar un momento para que el input se actualice
-    setTimeout(() => {
-      handleSubmit(syntheticEvent, currentModel);
-    }, 100);
-  };
   
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full">
       {/* Modal de cambio de modelo */}
       <ModelChangeModal
         isOpen={showModelChangeModal}
@@ -187,30 +170,11 @@ export default function ChatPage() {
         onConfirm={handleConfirmModelChange}
         onCancel={handleCancelModelChange}
       />
-      
-      {/* Overlay para cerrar sidebar en móvil */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed lg:relative
-        inset-y-0 left-0
-        z-30 lg:z-0
-        w-64
-        transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        border-r border-gray-200 dark:border-gray-700 flex flex-col
-        bg-white dark:bg-gray-800
-      `}>
+      <div className="w-64 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <ConversationSidebar onConversationSelect={handleConversationSelect} />
       </div>
       
-      <div className="flex-1 flex flex-col h-full min-w-0">
+      <div className="flex-1 flex flex-col h-full">
         <div className="flex-1 flex flex-col overflow-hidden">
           <ChatArea 
             messages={messages}
@@ -218,12 +182,10 @@ export default function ChatPage() {
             sources={sources}
             isLoading={isLoading}
             error={error}
-            onSuggestedQuestion={handleSuggestedQuestion}
           />
         </div>
         
-        {/* Input más compacto en móvil */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-2 lg:p-4 bg-white dark:bg-gray-800">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
           <ChatInput
             input={input}
             handleInputChange={handleInputChange}
