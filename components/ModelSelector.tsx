@@ -54,15 +54,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
         }`}
       >
-        <span className="text-xl flex items-center">{currentModelData?.icon}</span>
-        <div className="flex flex-col items-start">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {currentModelData?.name}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {currentModelData?.description}
-          </span>
-        </div>
+        <span className="text-lg flex items-center">{currentModelData?.icon}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">
+          {currentModelData?.name}
+        </span>
         <svg 
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-0' : 'rotate-180'}`}
           fill="none" 

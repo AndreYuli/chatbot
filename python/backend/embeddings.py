@@ -263,6 +263,8 @@ def get_documents(collection_name, question, limit=5):
     
     IMPORTANTE: Usa task_type=None para compatibilidad con n8n
     """
+    from datetime import datetime
+    
     qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
     api_key = os.getenv('QDRANT_API_KEY', None)
     
@@ -271,9 +273,30 @@ def get_documents(collection_name, question, limit=5):
         headers['api-key'] = api_key
     
     try:
+        # Enriquecer la pregunta con contexto temporal si pregunta por "hoy", "esta semana", etc.
+        temporal_keywords = ['hoy', 'esta semana', 'actual', 'de hoy', 'esta lección', 'lección de hoy']
+        question_lower = question.lower()
+        
+        enriched_question = question
+        if any(keyword in question_lower for keyword in temporal_keywords):
+            now = datetime.now()
+            
+            # Nombres en español
+            dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+            
+            dia_semana = dias[now.weekday()]
+            dia_numero = now.day
+            mes = meses[now.month - 1]
+            
+            # Agregar tanto el día de la semana como la fecha completa
+            enriched_question = f"{question} {dia_semana} {dia_numero} de {mes}"
+            print(f"🔍 Pregunta enriquecida con contexto temporal: {enriched_question}")
+        
         # Generar embedding SIN task_type para compatibilidad con n8n
-        print(f"🔍 Generando embedding para búsqueda (modo n8n compatible): {question}")
-        question_vector = generate_embedding(question, task_type=None)
+        print(f"🔍 Generando embedding para búsqueda (modo n8n compatible): {enriched_question}")
+        question_vector = generate_embedding(enriched_question, task_type=None)
         
         if not question_vector:
             print("❌ Error: No se pudo generar el vector de la pregunta")
