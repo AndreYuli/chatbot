@@ -169,6 +169,16 @@ def chat():
         # Construir query contextual con historial reciente
         # Priorizar la pregunta actual pero incluir contexto si es una pregunta de seguimiento
         contextual_query = message
+        
+        # Palabras temporales que indican que la pregunta ya tiene contexto temporal completo
+        temporal_keywords = ['hoy', 'mañana', 'ayer', 'pasado', 'antes', 'lunes', 'martes', 
+                            'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
+                            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+        
+        message_lower = message.lower()
+        has_temporal_keyword = any(keyword in message_lower for keyword in temporal_keywords)
+        
         if conversation_history and len(conversation_history) > 0:
             # Tomar los últimos 10 mensajes para contexto
             recent_messages = conversation_history[-10:] if len(conversation_history) >= 10 else conversation_history
@@ -178,11 +188,39 @@ def chat():
                     context_parts.append(msg.get('content', ''))
             
             # Si hay contexto previo y la pregunta actual es corta (probablemente de seguimiento)
-            if context_parts and len(message.split()) < 8:
+            # PERO NO tiene palabras temporales (para evitar conflictos como "hoy" vs "mañana")
+            if context_parts and len(message.split()) < 8 and not has_temporal_keyword:
                 # Combinar los últimos 2 mensajes del usuario con más peso en la pregunta actual
                 recent_context = ' '.join(context_parts[-2:])
                 contextual_query = f"{message} {recent_context}"
-                print(f"🔗 Query contextual (pregunta corta): {contextual_query}")
+                print(f"🔗 Query contextual (pregunta corta sin palabras temporales): {contextual_query}")
+                
+                # IMPORTANTE: Si la pregunta corta menciona un día/número sin mes (ej: "y la del 31")
+                # Intentar extraer el mes del contexto previo
+                import re
+                meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                
+                # Buscar número de día en la pregunta actual (ej: "31", "del 31", "el 31")
+                dia_match = re.search(r'\b(\d{1,2})\b', message.lower())
+                
+                # Buscar mes en el contexto previo
+                mes_match = None
+                for mes in meses:
+                    if mes in recent_context.lower():
+                        mes_match = mes
+                        break
+                
+                # Si encontramos día en pregunta actual y mes en contexto previo
+                if dia_match and mes_match:
+                    dia_numero = dia_match.group(1)
+                    # Enriquecer el query contextual con fecha completa
+                    contextual_query = f"{message} {dia_numero} de {mes_match}"
+                    print(f"📅 Fecha detectada del contexto: {dia_numero} de {mes_match}")
+                    print(f"🔗 Query enriquecido con fecha: {contextual_query}")
+            elif has_temporal_keyword:
+                # Si tiene palabra temporal, usar SOLO el mensaje actual sin contexto
+                print(f"🔗 Query con palabra temporal detectada: '{message}' (sin contexto adicional)")
             else:
                 print(f"🔗 Query simple: {message}")
         

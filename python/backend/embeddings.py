@@ -12,6 +12,21 @@ print("🔄 Configurando Google Gemini para embeddings...")
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 print("✅ Google Gemini configurado")
 
+# Modelos disponibles con rotación para evitar límites de cuota
+EMBEDDING_MODELS = [
+    'models/text-embedding-004',  # Modelo principal
+]
+
+# Índice para rotación de modelos (se incrementa en cada llamada)
+_model_index = 0
+
+def get_next_embedding_model():
+    """Obtiene el siguiente modelo de la lista para rotación"""
+    global _model_index
+    model = EMBEDDING_MODELS[_model_index % len(EMBEDDING_MODELS)]
+    _model_index += 1
+    return model
+
 def generate_embedding(text: str, task_type=None, retry_delay=2) -> list:
     """
     Genera embedding usando Google Gemini
@@ -274,24 +289,68 @@ def get_documents(collection_name, question, limit=8):
         headers['api-key'] = api_key
     
     try:
-        # Enriquecer la pregunta con contexto temporal si pregunta por "hoy", "esta semana", etc.
-        temporal_keywords = ['hoy', 'esta semana', 'actual', 'de hoy', 'esta lección', 'lección de hoy']
-        question_lower = question.lower()
+        # Nombres en español para días y meses
+        dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         
+        # DEBUG: Ver qué query recibimos
+        print(f"🔍 Query recibida en semantic_search: '{question}'")
+        
+        # Enriquecer la pregunta con contexto temporal
+        question_lower = question.lower()
         enriched_question = question
-        if any(keyword in question_lower for keyword in temporal_keywords):
-            now = datetime.now()
+        target_date = None
+        
+        # Detectar referencias temporales y calcular la fecha correspondiente
+        from datetime import timedelta
+        import re
+        now = datetime.now()
+        
+        # 1. Detectar referencias relativas (hoy, mañana, ayer, etc.)
+        # IMPORTANTE: Detectar frases más específicas PRIMERO (pasado mañana antes que mañana)
+        if 'hoy' in question_lower or 'de hoy' in question_lower or 'esta lección' in question_lower or 'lección de hoy' in question_lower or 'actual' in question_lower or 'esta semana' in question_lower:
+            target_date = now
+            print(f"📅 Detectado: HOY")
+        elif 'pasado mañana' in question_lower or 'pasado-mañana' in question_lower or 'pasadomañana' in question_lower:
+            target_date = now + timedelta(days=2)
+            print(f"📅 Detectado: PASADO MAÑANA")
+        elif 'antes de ayer' in question_lower or 'anteayer' in question_lower or 'antesdeayer' in question_lower:
+            target_date = now - timedelta(days=2)
+            print(f"📅 Detectado: ANTES DE AYER")
+        elif 'mañana' in question_lower:
+            target_date = now + timedelta(days=1)
+            print(f"📅 Detectado: MAÑANA → {dias[target_date.weekday()]} {target_date.day} de {meses[target_date.month - 1]}")
+        elif 'ayer' in question_lower:
+            target_date = now - timedelta(days=1)
+            print(f"📅 Detectado: AYER → {dias[target_date.weekday()]} {target_date.day} de {meses[target_date.month - 1]}")
+        else:
+            # 2. Detectar fechas explícitas en formato "DD de mes" (ej: "30 de octubre", "3 de noviembre")
+            # Patrón: número + "de" + nombre_del_mes
+            fecha_pattern = r'(\d{1,2})\s+de\s+(' + '|'.join(meses) + r')'
+            match = re.search(fecha_pattern, question_lower)
             
-            # Nombres en español
-            dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-            meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-                     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+            if match:
+                dia_numero = int(match.group(1))
+                mes_nombre = match.group(2)
+                mes_numero = meses.index(mes_nombre) + 1
+                
+                # Construir la fecha con el año actual
+                from datetime import date
+                try:
+                    target_date = date(now.year, mes_numero, dia_numero)
+                    print(f"📅 Detectado fecha explícita: {dia_numero} de {mes_nombre}")
+                except ValueError:
+                    # Fecha inválida (ej: 31 de febrero)
+                    print(f"⚠️ Fecha inválida: {dia_numero} de {mes_nombre}")
+                    target_date = None
+        
+        # Si detectamos una referencia temporal, enriquecer la pregunta
+        if target_date:
+            dia_semana = dias[target_date.weekday()]
+            dia_numero = target_date.day
+            mes = meses[target_date.month - 1]
             
-            dia_semana = dias[now.weekday()]
-            dia_numero = now.day
-            mes = meses[now.month - 1]
-            
-            # Agregar tanto el día de la semana como la fecha completa
             enriched_question = f"{question} {dia_semana} {dia_numero} de {mes}"
             print(f"🔍 Pregunta enriquecida con contexto temporal: {enriched_question}")
         
@@ -306,17 +365,31 @@ def get_documents(collection_name, question, limit=8):
         print(f"✅ Vector generado exitosamente (dimensión: {len(question_vector)})")
         
         # Buscar documentos similares usando búsqueda semántica
-        # Aumentar limit a 8 para obtener más contexto (n8n usa 4)
+        # Aumentar limit a 20 para capturar todos los días de la lección cuando hay fecha específica
+        # Luego se reduce a 'limit' después del re-ranking
+        search_limit = 20 if target_date else limit
+        
         payload = {
             "vector": question_vector,
-            "limit": 8,  # Aumentado de 4 a 8 para mejor contexto
+            "limit": search_limit,
             "with_payload": True,
             "with_vector": False
             # SIN score_threshold - n8n no lo usa por defecto
         }
         
+        # Si hay fecha específica, agregar búsqueda híbrida con scroll
+        # para garantizar que encontremos el documento exacto
+        if target_date:
+            dia_semana_target = dias[target_date.weekday()]
+            dia_numero_target = str(target_date.day)
+            mes_target = meses[target_date.month - 1]
+            
+            print(f"🔎 Búsqueda HÍBRIDA activada para: {dia_semana_target} {dia_numero_target} de {mes_target}")
+            print(f"   - Búsqueda vectorial: {search_limit} docs")
+            print(f"   - Búsqueda por scroll: revisando toda la colección")
+        
         print(f"🔎 Buscando en Qdrant: {qdrant_url}/collections/{collection_name}/points/search")
-        print(f"   - Limit: 8 (aumentado para más contexto)")
+        print(f"   - Limit: {search_limit} ({'ampliado para búsqueda por fecha' if search_limit > limit else 'normal'})")
         print(f"   - Sin score_threshold (compatible con n8n)")
         
         response = requests.post(
@@ -333,6 +406,80 @@ def get_documents(collection_name, question, limit=8):
             points = data.get('result', [])
             
             print(f"� Resultados encontrados: {len(points)}")
+            
+            # Si hay fecha específica y no encontramos el documento exacto, hacer scroll search
+            if target_date:
+                dia_semana_target = dias[target_date.weekday()]
+                dia_numero_target = str(target_date.day)
+                mes_target = meses[target_date.month - 1]
+                
+                # Buscar si alguno de los resultados es match exacto
+                has_exact_match = False
+                for point in points:
+                    content = point.get('payload', {}).get('content', '')
+                    content_lower = content.lower()
+                    if (dia_semana_target.lower() in content_lower and 
+                        dia_numero_target in content and 
+                        mes_target in content_lower):
+                        has_exact_match = True
+                        break
+                
+                # Si NO encontramos match exacto, hacer scroll para buscarlo
+                if not has_exact_match:
+                    print(f"⚠️  No se encontró match exacto en los {len(points)} resultados vectoriales")
+                    print(f"🔄 Ejecutando scroll search para encontrar: {dia_semana_target} {dia_numero_target} de {mes_target}")
+                    
+                    try:
+                        scroll_payload = {
+                            "limit": 200,  # Aumentado a 200 para cubrir toda la colección (124 docs actuales)
+                            "with_payload": True,
+                            "with_vector": False
+                        }
+                        
+                        scroll_response = requests.post(
+                            f"{qdrant_url}/collections/{collection_name}/points/scroll",
+                            headers=headers,
+                            json=scroll_payload,
+                            timeout=10
+                        )
+                        
+                        if scroll_response.status_code == 200:
+                            scroll_data = scroll_response.json()
+                            scroll_points = scroll_data.get('result', {}).get('points', [])
+                            print(f"📜 Scroll encontró {len(scroll_points)} documentos en total")
+                            print(f"🔍 Buscando coincidencia exacta de: '{dia_semana_target}' + '{dia_numero_target}' + '{mes_target}'")
+                            
+                            # Buscar el documento con fecha exacta
+                            found_match = False
+                            for scroll_point in scroll_points:
+                                content = scroll_point.get('payload', {}).get('content', '')
+                                content_lower = content.lower()
+                                
+                                # Debug: mostrar primeros 100 caracteres de cada documento revisado
+                                if 'lección 6' in content_lower and 'noviembre' in content_lower:
+                                    print(f"   🔎 Revisando: {content[:120]}...")
+                                
+                                if (dia_semana_target.lower() in content_lower and 
+                                    dia_numero_target in content and 
+                                    mes_target in content_lower):
+                                    
+                                    print(f"✅ ¡ENCONTRADO en scroll! Agregando al inicio de resultados")
+                                    print(f"   ID: {scroll_point.get('id')}")
+                                    print(f"   Contenido: {content[:150]}...")
+                                    
+                                    # Agregar este documento al inicio con score alto
+                                    points.insert(0, {
+                                        'id': scroll_point.get('id'),
+                                        'score': 1.5,  # Score artificial alto para priorizarlo
+                                        'payload': scroll_point.get('payload', {})
+                                    })
+                                    found_match = True
+                                    break
+                            
+                            if not found_match:
+                                print(f"❌ No se encontró documento con: {dia_semana_target} {dia_numero_target} de {mes_target}")
+                    except Exception as scroll_error:
+                        print(f"⚠️  Error en scroll search: {scroll_error}")
             
             if not points:
                 print("⚠️  No se encontraron documentos relevantes")
@@ -358,18 +505,13 @@ def get_documents(collection_name, question, limit=8):
                     })
             
             # RE-RANKING: Si la pregunta tiene fecha específica, priorizar documentos con esa fecha
-            if enriched_question != question:  # Si se enriqueció con fecha
+            if target_date:  # Si se detectó una referencia temporal
                 print(f"🎯 Aplicando re-ranking por coincidencia de fecha exacta...")
                 
-                # Extraer los componentes de fecha de la pregunta enriquecida
-                now = datetime.now()
-                dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-                meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-                
-                dia_semana = dias[now.weekday()]
-                dia_numero = str(now.day)
-                mes_actual = meses[now.month - 1]
+                # Extraer los componentes de la fecha objetivo
+                dia_semana = dias[target_date.weekday()]
+                dia_numero = str(target_date.day)
+                mes_actual = meses[target_date.month - 1]
                 
                 # Re-ordenar documentos: los que contienen la fecha exacta van primero
                 exact_matches = []
