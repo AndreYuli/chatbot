@@ -3,45 +3,45 @@ import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
 
-const requiredEnv = (key: string): string => {
-  const value = process.env[key];
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+// Soft env reader: in development, don't crash the whole app if Google creds are missing
+const readEnvSoft = (key: string, { requiredInProd = true }: { requiredInProd?: boolean } = {}) => {
+  const val = process.env[key];
+  if (!val) {
+    if (process.env.NODE_ENV === 'production' && requiredInProd) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+    // Return a placeholder to allow the dev server to boot; login will fail until configured
+    console.warn(`[auth] Env var ${key} missing. Using placeholder for development.`);
+    return `missing_${key}`;
   }
-
-  return value;
+  return val;
 };
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
-      clientId: requiredEnv('GOOGLE_CLIENT_ID'),
-      clientSecret: requiredEnv('GOOGLE_CLIENT_SECRET'),
+      clientId: readEnvSoft('GOOGLE_CLIENT_ID'),
+      clientSecret: readEnvSoft('GOOGLE_CLIENT_SECRET'),
     }),
   ],
   session: {
-    strategy: 'jwt',
+    strategy: 'database',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = (token.uid as string) ?? token.sub ?? session.user.id ?? '';
+    async session({ session, user }) {
+      if (session.user && user) {
+        // Expose user.id on the session for API authorization
+        session.user.id = user.id;
       }
-
       return session;
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.uid = (user as { id?: string }).id ?? token.uid;
-      }
-
-      return token;
     },
   },
   pages: {
     signIn: '/es-ES/auth/signin',
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: false, // Disable debug in production to avoid conflicts
 };

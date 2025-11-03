@@ -87,8 +87,9 @@ export async function POST(req: NextRequest) {
 
     const userId = session?.user?.id ?? null;
     const isGuest = !userId;
-    const isGuestConversation =
-      isGuest || !normalizedConversationId || normalizedConversationId.startsWith('temp_');
+    const cookieHeader = req.headers.get('cookie') || '';
+    const guestMatch = /guest_token=([^;]+)/.exec(cookieHeader);
+    const guestToken = guestMatch?.[1];
     
     // Get environment variables
     const n8nBaseUrl = process.env.N8N_BASE_URL;
@@ -98,8 +99,8 @@ export async function POST(req: NextRequest) {
     // Only using n8n - remove model selection
     const selectedModel = 'n8n';
     
-    let conversationIdToUse = normalizedConversationId;
-    let conversation: ConversationRecord | null = null;
+  let conversationIdToUse = normalizedConversationId;
+  let conversation: ConversationRecord | null = null;
 
     if (!isGuest) {
       if (!conversationIdToUse) {
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
           data: {
             title: generateConversationTitle(message),
             userId,
-            settings: JSON.stringify({ model: selectedModel }),
+            settings: JSON.stringify({ aiModel: selectedModel }),
           },
         });
         conversation = created;
@@ -151,9 +152,50 @@ export async function POST(req: NextRequest) {
           conversation = refreshed ?? conversation;
         }
       }
-    } else if (!conversationIdToUse) {
-      // Guest users keep everything en memoria; generamos un id temporal consistente mientras dure la sesión.
-      conversationIdToUse = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    } else {
+      // Guest: ensure conversation in DB tied to guest session
+      let token = guestToken;
+      if (!token) {
+        token = (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 8));
+      }
+      if (!conversationIdToUse) {
+        const created = await prisma.conversation.create({
+          data: {
+            title: generateConversationTitle(message),
+            guestSessionId: token,
+            settings: JSON.stringify({ aiModel: selectedModel }),
+          },
+        });
+        conversation = created;
+        conversationIdToUse = created.id;
+      } else {
+        // Verify conversation belongs to this guest session
+        conversation = await prisma.conversation.findFirst({
+          where: { id: conversationIdToUse, guestSessionId: token },
+        });
+        if (!conversation) {
+          return new Response(
+            `data: ${JSON.stringify({ type: 'error', data: { message: 'No encontramos esta conversación. Por favor, crea una nueva.', code: 'CONVERSATION_NOT_FOUND' } })}\n\n`,
+            { status: 404, headers: { 'Content-Type': 'text/event-stream' } }
+          );
+        }
+
+        // If the conversation has a generic title, update it based on the user's message
+        if (!conversation.title || conversation.title === 'Nueva conversación') {
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: {
+              title: generateConversationTitle(message),
+            },
+          });
+
+          const refreshed = await prisma.conversation.findUnique({
+            where: { id: conversation.id },
+          });
+
+          conversation = refreshed ?? conversation;
+        }
+      }
     }
 
     if (conversation) {
@@ -289,6 +331,12 @@ export async function POST(req: NextRequest) {
             });
 
             completePayload.data.messageId = assistantMessage.id;
+            
+            // Actualizar timestamp de la conversación después de guardar el mensaje
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { updatedAt: new Date() }
+            });
           }
 
           push(completePayload);

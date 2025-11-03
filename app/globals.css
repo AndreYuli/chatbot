@@ -5,6 +5,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Variables personalizadas para móviles */
+  --touch-target-size: 44px; /* Tamaño mínimo recomendado para elementos táctiles */
+  --mobile-padding: 1rem;
+  --desktop-padding: 1.5rem;
+  
+  /* Breakpoints personalizados */
+  --mobile-max: 767px;
+  --tablet-min: 768px;
+  --desktop-min: 1024px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,21 +24,154 @@
   }
 }
 
+/* Configuración base responsive */
 html {
-  font-size: 16px; /* Tamaño base */
+  font-size: 16px; /* Base para desktop */
+  scroll-behavior: smooth;
+}
+
+/* Ajuste de tamaño de fuente para móviles */
+@media (max-width: 767px) {
+  html {
+    font-size: 14px; /* Ligeramente más pequeño en móviles */
+  }
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-size: 1rem; /* 16px */
-  line-height: 1.5;
+  font-size: 1rem;
+  line-height: 1.6; /* Mejor legibilidad */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%; /* Previene zoom automático en iOS */
+  font-feature-settings: 'kern' 1; /* Mejora el kerning */
 }
 
+/* Mejoras de accesibilidad y UX */
+* {
+  box-sizing: border-box;
+}
+
+  /* Área de toque mínima para elementos interactivos */
+button, 
+input[type="button"], 
+input[type="submit"], 
+input[type="reset"],
+a {
+  min-height: var(--touch-target-size);
+  min-width: var(--touch-target-size);
+}
+
+@media (max-width: 767px) {
+  button, 
+  input[type="button"], 
+  input[type="submit"], 
+  input[type="reset"],
+  a {
+    min-height: 48px; /* Área de toque más grande en móviles */
+  }
+}
+
+/* Clase utility para área de toque */
+.min-h-touch {
+  min-height: 44px;
+}
+
+@media (max-width: 767px) {
+  .min-h-touch {
+    min-height: 48px;
+  }
+}/* Optimizaciones de scroll */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Prevenir zoom en inputs en iOS */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Previene zoom automático */
+  }
+}
+
+/* Utilidades personalizadas */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Espaciado responsive */
+  .mobile-padding {
+    padding: var(--mobile-padding);
+  }
+  
+  .desktop-padding {
+    padding: var(--desktop-padding);
+  }
+  
+  /* Focus mejorado para accesibilidad */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+  
+  /* Animaciones suaves para móviles */
+  @media (max-width: 767px) {
+    .transition-all {
+      transition-duration: 200ms;
+    }
+  }
+  
+  /* Prevenir selección de texto en elementos UI */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Backdrop blur para modales */
+  .backdrop-blur-mobile {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+/* Componentes personalizados */
+@layer components {
+  /* Botón táctil optimizado */
+  .btn-touch {
+    @apply px-4 py-3 lg:py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 focus-ring;
+    min-height: 48px;
+  }
+  
+  /* Input táctil optimizado */
+  .input-touch {
+    @apply p-3 lg:p-2 rounded-lg border transition-all duration-200 focus-ring;
+    font-size: 16px; /* Previene zoom en iOS */
+  }
+  
+  /* Card responsive */
+  .card-responsive {
+    @apply bg-white dark:bg-gray-800 rounded-2xl lg:rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+  }
+}
+
+/* Mejoras de rendimiento */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimizaciones para PWA */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }

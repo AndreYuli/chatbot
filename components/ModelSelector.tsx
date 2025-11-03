@@ -48,23 +48,23 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+        className={`flex items-center gap-2 px-4 py-3 lg:px-3 lg:py-2 w-full transition-colors ${
           disabled
-            ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50'
-            : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
+            ? 'cursor-not-allowed opacity-50'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-600 active:bg-gray-100 dark:active:bg-gray-600'
         }`}
       >
-        <span className="text-xl flex items-center">{currentModelData?.icon}</span>
-        <div className="flex flex-col items-start">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
+        <span className="text-2xl lg:text-xl flex items-center">{currentModelData?.icon}</span>
+        <div className="flex flex-col items-start flex-1 min-w-0">
+          <span className="text-base lg:text-sm font-medium text-gray-900 dark:text-white truncate">
             {currentModelData?.name}
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-sm lg:text-xs text-gray-500 dark:text-gray-400 truncate">
             {currentModelData?.description}
           </span>
         </div>
         <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-0' : 'rotate-180'}`}
+          className={`w-5 h-5 lg:w-4 lg:h-4 transition-transform ${isOpen ? 'rotate-0' : 'rotate-180'} flex-shrink-0`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -81,10 +81,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             onClick={() => setIsOpen(false)}
           />
           
-          {/* Dropdown - Desplegado hacia ARRIBA */}
-          <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
+          {/* Dropdown - Desplegado hacia ARRIBA, responsive */}
+          <div className="absolute bottom-full left-0 mb-2 w-full min-w-72 lg:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
             <div className="p-2">
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2 uppercase tracking-wider">
+              <div className="text-sm lg:text-xs font-semibold text-gray-500 dark:text-gray-400 px-4 py-3 lg:px-3 lg:py-2 uppercase tracking-wider">
                 Seleccionar Modelo
               </div>
               {models.map((model) => (
@@ -94,25 +94,25 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                     onModelChange(model.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full flex items-start gap-3 px-3 py-2 rounded-md transition-colors ${
+                  className={`w-full flex items-start gap-3 px-4 py-3 lg:px-3 lg:py-2 rounded-lg lg:rounded-md transition-colors active:scale-95 ${
                     currentModel === model.id
                       ? 'bg-blue-50 dark:bg-blue-900/30'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600'
                   }`}
                 >
-                  <span className="text-2xl flex items-center">{model.icon}</span>
-                  <div className="flex-1 text-left">
+                  <span className="text-3xl lg:text-2xl flex items-center">{model.icon}</span>
+                  <div className="flex-1 text-left min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-base lg:text-sm font-medium text-gray-900 dark:text-white truncate">
                         {model.name}
                       </span>
                       {currentModel === model.id && (
-                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-5 h-5 lg:w-4 lg:h-4 text-blue-600 flex-shrink-0 ml-2" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-sm lg:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                       {model.description}
                     </p>
                   </div>

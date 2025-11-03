@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
+function getGuestTokenFromReq(req: NextRequest) {
+  const cookieHeader = req.headers.get('cookie') || '';
+  const match = /guest_token=([^;]+)/.exec(cookieHeader);
+  return match?.[1];
+}
+
 // GET /api/conversations/[id] - Get a specific conversation
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -39,17 +45,32 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       );
     }
 
-    // If user is logged in, verify they own this conversation
-    if (session?.user?.id && conversation.userId !== session.user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized to access this conversation' }),
-        {
-          status: 403,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+    // Authorization: user-owned or guest session owned
+    if (session?.user?.id) {
+      if (conversation.userId !== session.user.id) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized to access this conversation' }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+    } else {
+      const guestToken = getGuestTokenFromReq(req);
+      if (!guestToken || conversation.guestSessionId !== guestToken) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized to access this conversation' }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
     }
 
     return new Response(JSON.stringify(conversation), {
@@ -90,18 +111,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    if (!session?.user?.id) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
     // First check if the conversation exists and belongs to the user
     const existingConversation = await prisma.conversation.findUnique({
       where: {
@@ -121,16 +130,31 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    if (existingConversation.userId !== session.user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized to delete this conversation' }),
-        {
-          status: 403,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+    if (session?.user?.id) {
+      if (existingConversation.userId !== session.user.id) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized to delete this conversation' }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+    } else {
+      const guestToken = getGuestTokenFromReq(req);
+      if (!guestToken || existingConversation.guestSessionId !== guestToken) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized to delete this conversation' }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
     }
 
     // Delete the conversation (messages will be deleted automatically due to cascade)

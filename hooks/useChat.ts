@@ -29,44 +29,154 @@ export function useChat() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Debug log
+  useEffect(() => {
+    console.log('[useChat] Session state:', { 
+      hasSession: !!session, 
+      userId: session?.user?.id,
+      isGuest 
+    });
+  }, [session, isGuest]);
+
   const saveGuestMessages = useCallback(
     (targetId: string, entries: Message[]) => {
+      console.log('[saveGuestMessages] Called with:', { 
+        targetId, 
+        isGuest, 
+        messageCount: entries.length,
+        isTemp: targetId?.startsWith('temp_')
+      });
+      
       if (!isGuest || !targetId?.startsWith('temp_')) {
+        console.log('[saveGuestMessages] Skipping save - not guest or not temp');
         return;
       }
 
       if (typeof window === 'undefined') {
+        console.log('[saveGuestMessages] Skipping save - window undefined');
         return;
       }
 
-      window.localStorage.setItem(`guest_messages_${targetId}`, JSON.stringify(entries));
+      const storageKey = `guest_messages_${targetId}`;
+      const serialized = JSON.stringify(entries);
+      console.log('[saveGuestMessages] Saving to localStorage:', storageKey, entries);
+      window.localStorage.setItem(storageKey, serialized);
+      console.log('[saveGuestMessages] ✅ Saved successfully!');
     },
     [isGuest]
   );
 
+  const updateGuestConversationMetadata = useCallback(
+    (conversationId: string, updates: { title?: string; aiModel?: 'n8n' | 'python'; updatedAt?: string }) => {
+      if (!isGuest || typeof window === 'undefined' || !conversationId.startsWith('temp_')) {
+        return;
+      }
+
+      const stored = window.localStorage.getItem('guest_conversations');
+      if (!stored) {
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        let changed = false;
+        const updatedConversations = parsed.map((conv: any) => {
+          if (conv.id !== conversationId) {
+            return conv;
+          }
+          changed = true;
+          return {
+            ...conv,
+            title: updates.title ?? conv.title,
+            updatedAt: updates.updatedAt ?? conv.updatedAt ?? new Date().toISOString(),
+            settings: updates.aiModel
+              ? JSON.stringify({ aiModel: updates.aiModel })
+              : conv.settings,
+          };
+        });
+
+        if (changed) {
+          window.localStorage.setItem('guest_conversations', JSON.stringify(updatedConversations));
+        }
+      } catch (error) {
+        console.error('Error updating guest conversation metadata:', error);
+      }
+    },
+    [isGuest]
+  );
+
+  const generateConversationTitle = useCallback((message: string): string => {
+    const cleanMessage = message.trim();
+
+    if (cleanMessage.length <= 10) {
+      return cleanMessage || 'Nueva conversación';
+    }
+
+    if (cleanMessage.includes('?')) {
+      const questionPart = cleanMessage.split('?')[0] + '?';
+      if (questionPart.length <= 60) {
+        return questionPart;
+      }
+    }
+
+    const lowerMessage = cleanMessage.toLowerCase();
+
+    if (lowerMessage.match(/lecci[oó]n\s*\d+/)) {
+      const match = cleanMessage.match(/lecci[oó]n\s*\d+/i);
+      if (match) {
+        return `Pregunta sobre ${match[0]}`;
+      }
+    }
+
+    if (lowerMessage.includes('escuela sab')) {
+      return 'Consulta sobre Escuela Sabática';
+    }
+
+    const starters = ['qué', 'que', 'cómo', 'como', 'cuál', 'cual', 'cuándo', 'cuando', 'dónde', 'donde', 'por qué', 'por que'];
+    if (starters.some((start) => lowerMessage.startsWith(start))) {
+      return cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+    }
+
+    const words = cleanMessage.split(/\s+/);
+    if (words.length <= 8) {
+      return cleanMessage;
+    }
+
+    return words.slice(0, 8).join(' ') + '...';
+  }, []);
+
   const loadGuestMessages = useCallback(
     (targetId: string): Message[] => {
       if (!isGuest || !targetId?.startsWith('temp_')) {
+        console.log('[loadGuestMessages] Skipping - not guest or not temp ID:', { isGuest, targetId });
         return [];
       }
 
       if (typeof window === 'undefined') {
+        console.log('[loadGuestMessages] Skipping - window undefined');
         return [];
       }
 
-      const raw = window.localStorage.getItem(`guest_messages_${targetId}`);
+      const storageKey = `guest_messages_${targetId}`;
+      const raw = window.localStorage.getItem(storageKey);
+      console.log('[loadGuestMessages] Reading from localStorage:', storageKey);
+      console.log('[loadGuestMessages] Raw data:', raw);
+      
       if (!raw) {
+        console.log('[loadGuestMessages] No messages found in localStorage');
         return [];
       }
 
       try {
         const parsed = JSON.parse(raw);
-        return parsed.map((msg: any) => ({
+        const messages = parsed.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         }));
+        console.log('[loadGuestMessages] Parsed messages:', messages);
+        return messages;
       } catch (error) {
-        console.error('Error parsing guest messages:', error);
+        console.error('[loadGuestMessages] Error parsing guest messages:', error);
         return [];
       }
     },
@@ -81,45 +191,94 @@ export function useChat() {
     scrollToBottom();
   }, [messages, streamingMessage]);
 
+  // Persist guest messages whenever they change
+  useEffect(() => {
+    console.log('[useChat] Persist effect triggered:', { 
+      conversationId, 
+      messageCount: messages.length,
+      isTemp: conversationId?.startsWith('temp_')
+    });
+    
+    if (!conversationId || !conversationId.startsWith('temp_')) {
+      console.log('[useChat] Skipping persist - not temp conversation');
+      return;
+    }
+
+    console.log('[useChat] Persisting messages to localStorage...');
+    saveGuestMessages(conversationId, messages);
+  }, [conversationId, messages, saveGuestMessages]);
+
   // Load messages when conversationId changes
   useEffect(() => {
     if (!conversationId) {
-      // No limpiar inmediatamente para evitar flickering
-      // Los mensajes se limpiarán cuando se carguen los de la nueva conversación
+      // Limpiar mensajes cuando no hay conversación
+      console.log('[useChat] No conversation ID, clearing messages');
+      setMessages([]);
+      setError(null);
       return;
     }
 
     if (conversationId.startsWith('temp_')) {
+      console.log('[useChat] Loading guest messages for:', conversationId);
       const guestMessages = loadGuestMessages(conversationId);
+      console.log('[useChat] Loaded guest messages:', guestMessages.length, guestMessages);
       setMessages(guestMessages);
       return;
     }
 
     const fetchMessages = async () => {
       try {
+        console.log('Fetching messages for conversation:', conversationId);
         const response = await fetch(`/api/conversations/${conversationId}/messages`);
         if (response.ok) {
           const conversationMessages = await response.json();
+          console.log('Loaded messages:', conversationMessages);
           const messagesWithDates = conversationMessages.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }));
           setMessages(messagesWithDates);
+          setError(null); // Limpiar errores previos
         } else {
           const errorText = await response.text();
           console.error('Failed to fetch conversation messages:', errorText);
-          setError(`Failed to load conversation: ${errorText}`);
+          setError(`Error al cargar la conversación: ${errorText}`);
           setMessages([]);
         }
       } catch (error) {
         console.error('Error fetching conversation messages:', error);
-        setError('Failed to load conversation messages. Please try again.');
+        setError('Error al cargar los mensajes. Por favor, intenta de nuevo.');
         setMessages([]);
       }
     };
 
     fetchMessages();
   }, [conversationId, loadGuestMessages]);
+
+  // Mantener metadatos actualizados para invitados cuando haya mensajes nuevos
+  useEffect(() => {
+    if (!conversationId || !conversationId.startsWith('temp_') || messages.length === 0) {
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const updatedAtIso = lastMessage.timestamp instanceof Date
+      ? lastMessage.timestamp.toISOString()
+      : new Date(lastMessage.timestamp).toISOString();
+
+    updateGuestConversationMetadata(conversationId, {
+      updatedAt: updatedAtIso,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('conversation:updated', {
+        detail: {
+          id: conversationId,
+          lastMessageAt: updatedAtIso,
+        },
+      }));
+    }
+  }, [conversationId, messages, updateGuestConversationMetadata]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -128,6 +287,27 @@ export function useChat() {
   const ensureConversation = useCallback(
     async (userMessage: string, aiModel?: 'n8n' | 'python'): Promise<string> => {
       if (conversationId) {
+        if (conversationId.startsWith('temp_')) {
+          const titleForGuest = generateConversationTitle(userMessage);
+          updateGuestConversationMetadata(conversationId, {
+            title: titleForGuest,
+            aiModel: aiModel ?? 'n8n',
+            updatedAt: new Date().toISOString(),
+          });
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('conversation:updated', {
+                detail: {
+                  id: conversationId,
+                  title: titleForGuest,
+                  settings: { aiModel: aiModel ?? 'n8n' },
+                  lastMessageAt: new Date().toISOString(),
+                },
+              })
+            );
+          }
+        }
         return conversationId;
       }
 
@@ -138,7 +318,7 @@ export function useChat() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            title,
+            title: generateConversationTitle(userMessage),
             settings: aiModel ? { aiModel } : undefined,
           }),
         });
@@ -162,31 +342,40 @@ export function useChat() {
         return created.id as string;
       }
 
-      // Guest users keep conversations in localStorage
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const guestConversation = {
-        id: tempId,
-        title: title || 'Nueva conversación',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: 'guest',
-        settings: aiModel ? JSON.stringify({ aiModel }) : null,
-      };
+      // Guest users: create conversation in server (DB) tied to a session cookie
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: generateConversationTitle(userMessage),
+          settings: aiModel ? { aiModel } : undefined,
+        }),
+      });
 
-      setConversationId(tempId);
-
-      if (typeof window !== 'undefined') {
-        const stored = window.localStorage.getItem('guest_conversations');
-        const parsed = stored ? JSON.parse(stored) : [];
-        const updated = [guestConversation, ...parsed.filter((conv: any) => conv.id !== tempId)];
-        window.localStorage.setItem('guest_conversations', JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('conversation:created', { detail: guestConversation }));
-        saveGuestMessages(tempId, []);
+      if (!response.ok) {
+        throw new Error('No se pudo crear la conversación');
       }
 
-      return tempId;
+      const created = await response.json();
+      setConversationId(created.id);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('conversation:created', {
+          detail: {
+            ...created,
+            createdAt: created.createdAt ?? new Date().toISOString(),
+          },
+        }));
+      }
+
+      return created.id as string;
     },
-    [conversationId, session?.user?.id, saveGuestMessages]
+    [
+      conversationId,
+      session?.user?.id,
+      generateConversationTitle,
+      updateGuestConversationMetadata,
+    ]
   );
 
   const handleSubmit = async (e: React.FormEvent, model: 'n8n' | 'python' = 'n8n') => {
@@ -224,7 +413,11 @@ export function useChat() {
       const endpoint = model === 'python' ? '/api/chat/python' : '/api/chat/send';
 
       // Prepare conversation history for Python (last 10 messages for better context)
-      const conversationHistory = messages.slice(-10).map(msg => ({
+      // Incluir el mensaje de usuario recién creado en el historial para asegurar
+      // que el backend reciba el contexto correcto incluso antes de que el estado se
+      // actualice de forma asíncrona.
+      const latestHistoryArray = [...messages, userMessage];
+      const conversationHistory = latestHistoryArray.slice(-10).map(msg => ({
         role: msg.role,
         content: msg.content
       }));
@@ -312,6 +505,8 @@ export function useChat() {
                       detail: {
                         id: data.data.conversationId,
                         lastMessageAt: new Date().toISOString(),
+                        // Proveer un título significativo basado en el primer mensaje enviado
+                        title: generateConversationTitle(userInput),
                       },
                     }));
                   }

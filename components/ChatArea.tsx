@@ -37,7 +37,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <div className="h-full overflow-y-auto relative">
-      {/* Model change warning removed - using only n8n */}
       
       {/* Mensaje de bienvenida - optimizado con transform en lugar de opacity */}
       <div 
@@ -49,9 +48,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         aria-hidden={!showWelcome}
       >
         <div className="text-center max-w-md px-4">
-          <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6">
             <svg 
-              className="w-10 h-10 text-blue-600 dark:text-blue-400" 
+              className="w-8 h-8 lg:w-10 lg:h-10 text-blue-600 dark:text-blue-400" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24" 
@@ -65,10 +64,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 lg:mb-3">
             SAGES Chat
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-base lg:text-lg text-gray-600 dark:text-gray-400">
             Escribe tu mensaje para comenzar
           </p>
         </div>
@@ -76,7 +75,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       
       {/* Lista de mensajes - optimizado con transform */}
       <div 
-        className={`space-y-6 p-4 transition-all duration-200 ${
+        className={`space-y-4 lg:space-y-6 p-3 lg:p-4 transition-all duration-200 ${
           showMessages 
             ? 'opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-2 absolute top-0 left-0 w-full pointer-events-none'

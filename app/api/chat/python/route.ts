@@ -87,7 +87,10 @@ export async function POST(req: NextRequest) {
 
     // Crear o actualizar conversación en la base de datos
     let dbConversationId = conversationId;
-    
+    const cookieHeader = req.headers.get('cookie') || '';
+    const guestMatch = /guest_token=([^;]+)/.exec(cookieHeader);
+    const guestToken = guestMatch?.[1];
+
     if (session?.user?.id) {
       if (!conversationId || conversationId.startsWith('temp_')) {
         // Crear nueva conversación
@@ -95,23 +98,92 @@ export async function POST(req: NextRequest) {
           data: {
             userId: session.user.id,
             title: generateConversationTitle(message),
-            settings: {
-              model: 'python',
-              ...settings
-            }
+            settings: JSON.stringify({
+              aiModel: 'python',
+              ...(settings || {})
+            })
           },
         });
         dbConversationId = conversation.id;
       } else {
-        // Actualizar conversación existente
+        const existingConversation = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+        });
+
+        if (!existingConversation || existingConversation.userId !== session.user.id) {
+          return new Response(
+            JSON.stringify({
+              error: 'Conversation not found or not owned by user',
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const shouldUpdateTitle =
+          !existingConversation.title || existingConversation.title === 'Nueva conversación';
+
         await prisma.conversation.update({
           where: { id: conversationId },
-          data: { 
+          data: {
             updatedAt: new Date(),
-            settings: {
-              model: 'python',
-              ...settings
-            }
+            settings: JSON.stringify({
+              aiModel: 'python',
+              ...(settings || {})
+            }),
+            ...(shouldUpdateTitle
+              ? { title: generateConversationTitle(message) }
+              : {}),
+          },
+        });
+      }
+
+      // Guardar mensaje del usuario
+      await prisma.message.create({
+        data: {
+          conversationId: dbConversationId,
+          content: message,
+          role: 'user',
+        },
+      });
+    } else {
+      // Invitado: crear/verificar conversación asociada al guest_token
+      let token = guestToken;
+      if (!token) {
+        token = (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 8));
+      }
+
+      if (!conversationId || conversationId.startsWith('temp_')) {
+        const conversation = await prisma.conversation.create({
+          data: {
+            guestSessionId: token,
+            title: generateConversationTitle(message),
+            settings: JSON.stringify({
+              aiModel: 'python',
+              ...(settings || {})
+            })
+          },
+        });
+        dbConversationId = conversation.id;
+      } else {
+        const existingConversation = await prisma.conversation.findFirst({
+          where: { id: conversationId, guestSessionId: token },
+        });
+        if (!existingConversation) {
+          return new Response(
+            JSON.stringify({ error: 'Conversation not found for this guest session' }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        const shouldUpdateTitle = !existingConversation.title || existingConversation.title === 'Nueva conversación';
+        await prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            updatedAt: new Date(),
+            settings: JSON.stringify({
+              aiModel: 'python',
+              ...(settings || {})
+            }),
+            ...(shouldUpdateTitle ? { title: generateConversationTitle(message) } : {}),
           },
         });
       }
@@ -199,13 +271,19 @@ export async function POST(req: NextRequest) {
             }
 
             // Guardar respuesta del asistente
-            if (session?.user?.id && accumulatedContent) {
+            if (accumulatedContent) {
               await prisma.message.create({
                 data: {
                   conversationId: dbConversationId,
                   content: accumulatedContent,
                   role: 'assistant',
                 },
+              });
+              
+              // Actualizar timestamp de la conversación después de guardar el mensaje
+              await prisma.conversation.update({
+                where: { id: dbConversationId },
+                data: { updatedAt: new Date() }
               });
             }
 
@@ -240,13 +318,19 @@ export async function POST(req: NextRequest) {
             }
 
             // Guardar respuesta del asistente
-            if (session?.user?.id && content) {
+            if (content) {
               await prisma.message.create({
                 data: {
                   conversationId: dbConversationId,
                   content,
                   role: 'assistant',
                 },
+              });
+              
+              // Actualizar timestamp de la conversación después de guardar el mensaje
+              await prisma.conversation.update({
+                where: { id: dbConversationId },
+                data: { updatedAt: new Date() }
               });
             }
 

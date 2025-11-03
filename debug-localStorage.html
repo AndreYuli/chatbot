@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug localStorage</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .storage-item {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .key {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .value {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .conversation-list {
+            margin-top: 10px;
+        }
+        .conversation-item {
+            background: #e7f3ff;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .message-count {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .danger {
+            background: #dc3545;
+        }
+        .danger:hover {
+            background: #c82333;
+        }
+        .empty {
+            color: #999;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
+        .stats {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug localStorage - Conversaciones de Invitado</h1>
+    
+    <div class="stats" id="stats"></div>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="loadData()">🔄 Recargar</button>
+        <button onclick="exportData()">💾 Exportar JSON</button>
+        <button class="danger" onclick="clearGuestData()">🗑️ Borrar datos de invitado</button>
+    </div>
+    
+    <div id="content"></div>
+
+    <script>
+        function loadData() {
+            const content = document.getElementById('content');
+            const stats = document.getElementById('stats');
+            content.innerHTML = '';
+            
+            let totalItems = 0;
+            let guestConversations = 0;
+            let guestMessages = 0;
+            let totalMessages = 0;
+
+            // Mostrar todas las conversaciones de invitado
+            const conversationsData = localStorage.getItem('guest_conversations');
+            if (conversationsData) {
+                const div = document.createElement('div');
+                div.className = 'storage-item';
+                div.innerHTML = `
+                    <div class="key">📋 guest_conversations</div>
+                    <div class="value">${conversationsData}</div>
+                `;
+                content.appendChild(div);
+                totalItems++;
+                
+                try {
+                    const conversations = JSON.parse(conversationsData);
+                    guestConversations = conversations.length;
+                    
+                    const listDiv = document.createElement('div');
+                    listDiv.className = 'conversation-list';
+                    listDiv.innerHTML = '<h3>Lista de Conversaciones:</h3>';
+                    
+                    conversations.forEach((conv, index) => {
+                        const messagesKey = `guest_messages_${conv.id}`;
+                        const messagesData = localStorage.getItem(messagesKey);
+                        let messageCount = 0;
+                        
+                        if (messagesData) {
+                            try {
+                                const messages = JSON.parse(messagesData);
+                                messageCount = messages.length;
+                                totalMessages += messageCount;
+                                guestMessages++;
+                            } catch (e) {
+                                console.error('Error parsing messages:', e);
+                            }
+                        }
+                        
+                        const convDiv = document.createElement('div');
+                        convDiv.className = 'conversation-item';
+                        convDiv.innerHTML = `
+                            <strong>${index + 1}.</strong> ${conv.title || 'Sin título'}
+                            <span class="message-count">${messageCount} mensajes</span>
+                            <br>
+                            <small style="color: #666;">ID: ${conv.id}</small>
+                            <br>
+                            <small style="color: #666;">Creada: ${new Date(conv.createdAt).toLocaleString()}</small>
+                            <br>
+                            <button onclick="viewMessages('${conv.id}')" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;">
+                                Ver mensajes
+                            </button>
+                            <button onclick="deleteConversation('${conv.id}')" style="margin-top: 5px; padding: 5px 10px; font-size: 12px; background: #dc3545;">
+                                Borrar
+                            </button>
+                        `;
+                        listDiv.appendChild(convDiv);
+                    });
+                    
+                    div.appendChild(listDiv);
+                } catch (e) {
+                    console.error('Error parsing guest_conversations:', e);
+                }
+            }
+
+            // Mostrar todos los mensajes de invitado
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('guest_messages_')) {
+                    const value = localStorage.getItem(key);
+                    const div = document.createElement('div');
+                    div.className = 'storage-item';
+                    div.innerHTML = `
+                        <div class="key">💬 ${key}</div>
+                        <div class="value">${value}</div>
+                    `;
+                    content.appendChild(div);
+                    totalItems++;
+                }
+            }
+
+            // Mostrar estadísticas
+            stats.innerHTML = `
+                <strong>📊 Estadísticas:</strong><br>
+                Total de items en localStorage: ${localStorage.length}<br>
+                Conversaciones de invitado: ${guestConversations}<br>
+                Archivos de mensajes: ${guestMessages}<br>
+                Total de mensajes: ${totalMessages}
+            `;
+
+            if (totalItems === 0) {
+                content.innerHTML = '<div class="empty">No hay datos de invitado en localStorage</div>';
+            }
+        }
+
+        function viewMessages(conversationId) {
+            const messagesKey = `guest_messages_${conversationId}`;
+            const messagesData = localStorage.getItem(messagesKey);
+            
+            if (messagesData) {
+                try {
+                    const messages = JSON.parse(messagesData);
+                    alert(`Mensajes de la conversación ${conversationId}:\n\n${JSON.stringify(messages, null, 2)}`);
+                } catch (e) {
+                    alert('Error al parsear mensajes: ' + e.message);
+                }
+            } else {
+                alert('No se encontraron mensajes para esta conversación');
+            }
+        }
+
+        function deleteConversation(conversationId) {
+            if (!confirm(`¿Seguro que quieres borrar la conversación ${conversationId}?`)) {
+                return;
+            }
+            
+            // Borrar los mensajes
+            const messagesKey = `guest_messages_${conversationId}`;
+            localStorage.removeItem(messagesKey);
+            
+            // Borrar de la lista de conversaciones
+            const conversationsData = localStorage.getItem('guest_conversations');
+            if (conversationsData) {
+                try {
+                    const conversations = JSON.parse(conversationsData);
+                    const filtered = conversations.filter(c => c.id !== conversationId);
+                    localStorage.setItem('guest_conversations', JSON.stringify(filtered));
+                } catch (e) {
+                    console.error('Error updating conversations:', e);
+                }
+            }
+            
+            loadData();
+        }
+
+        function exportData() {
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('guest_') || key === 'selectedConversationId')) {
+                    data[key] = localStorage.getItem(key);
+                }
+            }
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `localStorage-backup-${Date.now()}.json`;
+            a.click();
+        }
+
+        function clearGuestData() {
+            if (!confirm('¿Estás seguro de que quieres borrar TODOS los datos de invitado? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('guest_')) {
+                    keys.push(key);
+                }
+            }
+            
+            keys.forEach(key => localStorage.removeItem(key));
+            localStorage.removeItem('selectedConversationId');
+            
+            alert(`Se borraron ${keys.length} items`);
+            loadData();
+        }
+
+        // Cargar datos al iniciar
+        loadData();
+    </script>
+</body>
+</html>

@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useConversations } from '@/hooks/useConversations';
 import { useSession } from 'next-auth/react';
+import { useRouter, useParams } from 'next/navigation';
 
 // Debounce hook para optimizar búsqueda
 function useDebounce<T>(value: T, delay: number): T {
@@ -23,10 +24,13 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const ConversationSidebar: React.FC<{
   onConversationSelect?: (conversationId: string) => void;
-}> = ({ onConversationSelect }) => {
+  onClose?: () => void;
+}> = ({ onConversationSelect, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // Espera 300ms después de dejar de escribir
   const { data: session } = useSession();
+  const router = useRouter();
+  const params = useParams();
   const {
     conversations,
     loading,
@@ -40,16 +44,30 @@ const ConversationSidebar: React.FC<{
   // Create a new conversation - usando useCallback para evitar recreación
   const handleNewConversation = useCallback(async () => {
     try {
+      // Primero, reseteamos la conversación actual (eso debe hacerlo el componente padre)
+      if (onConversationSelect) {
+        onConversationSelect(''); // Limpiar primero
+      }
+      
+      // Pequeña pausa para asegurar que se limpie el estado
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       const newConversation = await createConversation('Nueva conversación');
-      // Notify parent component to switch to the new conversation
+      
+      // Luego notificamos con la nueva conversación
       if (onConversationSelect) {
         onConversationSelect(newConversation.id);
+      }
+      
+      // Cerrar sidebar en móviles
+      if (onClose) {
+        onClose();
       }
     } catch (error) {
       console.error('Error creating conversation:', error);
       alert('Error al crear la conversación. Por favor, intenta de nuevo.');
     }
-  }, [createConversation, onConversationSelect]);
+  }, [createConversation, onConversationSelect, onClose]);
 
   // Delete a specific conversation - usando useCallback
   const handleDeleteConversation = useCallback(async (conversationId: string, event: React.MouseEvent) => {
@@ -92,6 +110,13 @@ const ConversationSidebar: React.FC<{
     }
   }, [isLoggedIn, clearAllConversations, onConversationSelect]);
 
+  // Función para manejar el inicio de sesión
+  const handleGuestSignIn = useCallback(() => {
+    const currentPath = window.location.pathname;
+    router.push(`/auth/signin?callbackUrl=${encodeURIComponent(currentPath)}`);
+  }, [router]);
+
+
   // Filter conversations - usando useMemo para evitar recalcular en cada render
   const filteredConversations = useMemo(() => {
     if (!debouncedSearchTerm) return conversations;
@@ -105,25 +130,40 @@ const ConversationSidebar: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 space-y-3">
+      {/* Header con botón cerrar para móviles */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 lg:hidden">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Conversaciones
+        </h2>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        >
+          <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div className="p-3 lg:p-4 space-y-3">
         <button
           data-testid="new-conversation"
           onClick={handleNewConversation}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center justify-center font-medium"
+          className="w-full py-3 lg:py-2 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-colors flex items-center justify-center font-medium text-base lg:text-sm shadow-sm hover:shadow-md"
         >
-          <span className="text-lg mr-2">+</span>
+          <span className="text-xl lg:text-lg mr-2">+</span>
           Nueva Conversación
         </button>
         
         <button
           onClick={handleClearAllConversations}
-          className={`w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center justify-center text-sm font-medium ${
+          className={`w-full py-3 lg:py-2 px-4 border border-red-300 dark:border-red-600 hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg transition-colors flex items-center justify-center text-sm font-medium ${
             hasConversations ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
           }`}
           disabled={!hasConversations}
           aria-hidden={!hasConversations}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 lg:w-4 lg:h-4">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M4 7l16 0" />
             <path d="M10 11l0 6" />
@@ -132,25 +172,27 @@ const ConversationSidebar: React.FC<{
             <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
           </svg>
           {isLoggedIn 
-            ? 'Vaciar Chat' 
-            : 'Limpiar Sesión'
+            ? 'Borrar todas las conversaciones' 
+            : 'Borrar todas las conversaciones'
           }
         </button>
+
+        {/* (Sin exportar/importar para invitados) */}
       </div>
       
-      {/* Barra de búsqueda */}
-      <div className="px-4 pb-4">
+      {/* Barra de búsqueda */}  
+      <div className="px-3 lg:px-4 pb-4">
         <div className="relative">
           <input
             data-testid="sidebar-search"
             type="text"
             placeholder="Buscar conversaciones..."
-            className="w-full p-2 pl-10 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-3 lg:p-2 pl-11 lg:pl-10 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <svg 
-            className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" 
+            className="absolute left-3 lg:left-3 top-3.5 lg:top-2.5 h-5 w-5 text-gray-400" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24" 
@@ -166,15 +208,13 @@ const ConversationSidebar: React.FC<{
         </div>
       </div>
       
-      {/* Lista de conversaciones */}
+        {/* Lista de conversaciones */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 pb-2">
+        <div className="px-3 lg:px-4 pb-2 hidden lg:block">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            {isLoggedIn ? 'Conversaciones' : 'Conversaciones (Sesión)'}
+            Conversaciones
           </h3>
-        </div>
-        
-        {/* Loading state */}
+        </div>        {/* Loading state */}
         <div className={`p-4 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
           loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
         }`}>
@@ -195,11 +235,21 @@ const ConversationSidebar: React.FC<{
         </div>
         
         {/* Conversaciones */}
-        <div className={`space-y-2 px-2 transition-opacity duration-200 ${
+        <div className={`space-y-2 px-2 lg:px-2 transition-opacity duration-200 ${
           !loading && !error ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
         }`}>
           {filteredConversations.map((conversation) => {
             const aiModel = conversation.settings?.aiModel;
+            const handleConversationClick = () => {
+              if (onConversationSelect) {
+                onConversationSelect(conversation.id);
+              }
+              // Cerrar sidebar en móviles
+              if (onClose) {
+                onClose();
+              }
+            };
+            
             return (
             <div 
               key={conversation.id}
@@ -207,13 +257,13 @@ const ConversationSidebar: React.FC<{
               className="flex items-center group"
             >
               <button
-                onClick={() => onConversationSelect && onConversationSelect(conversation.id)}
-                className="flex-1 text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate"
+                onClick={handleConversationClick}
+                className="flex-1 text-left p-4 lg:p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors truncate"
               >
                 <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                  <span className="truncate text-sm">{conversation.title || 'Conversación sin título'}</span>
+                  <span className="truncate text-base lg:text-sm">{conversation.title || 'Conversación sin título'}</span>
                   {aiModel && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${
+                    <span className={`text-xs lg:text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${
                       aiModel === 'python' 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                         : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
@@ -222,20 +272,17 @@ const ConversationSidebar: React.FC<{
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                <div className="text-sm lg:text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                   {new Date(conversation.updatedAt ?? conversation.createdAt).toLocaleDateString()}
-                  {!isLoggedIn && (
-                    <span className="text-orange-600 dark:text-orange-400">• Sesión</span>
-                  )}
                 </div>
               </button>
               <button
                 data-testid={`delete-conversation-${conversation.id}`}
                 onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                className="opacity-0 group-hover:opacity-100 p-2 ml-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all duration-200 flex-shrink-0"
+                className="opacity-70 lg:opacity-0 group-hover:opacity-100 p-3 lg:p-2 ml-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg lg:rounded-md transition-all duration-200 flex-shrink-0 active:scale-95"
                 title="Eliminar conversación"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" className="lg:w-4 lg:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                   <path d="M4 7l16 0" />
                   <path d="M10 11l0 6" />
@@ -248,14 +295,14 @@ const ConversationSidebar: React.FC<{
             );
           })}
           
-          <div className={`p-6 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
+          <div className={`p-6 lg:p-6 text-center text-gray-500 dark:text-gray-400 transition-opacity duration-200 ${
             filteredConversations.length === 0 && !loading ? 'opacity-100' : 'opacity-0 h-0 invisible overflow-hidden'
           }`}>
-            <div className="text-4xl mb-2">💬</div>
-            <p className="text-sm">
+            <div className="text-4xl lg:text-4xl mb-2">💬</div>
+            <p className="text-base lg:text-sm">
               {isLoggedIn 
                 ? 'No hay conversaciones aún' 
-                : 'No hay conversaciones en esta sesión'
+                : 'No hay conversaciones'
               }
             </p>
           </div>
@@ -263,15 +310,19 @@ const ConversationSidebar: React.FC<{
       </div>
       
       {/* Aviso de sesión temporal */}
-      <div className={`p-4 border-t border-gray-200 dark:border-gray-700 transition-all duration-200 ${
+      <div className={`p-3 lg:p-4 border-t border-gray-200 dark:border-gray-700 transition-all duration-200 ${
         !isLoggedIn && conversations.length > 0 ? 'opacity-100 h-auto visible' : 'opacity-0 h-0 invisible overflow-hidden'
       }`}>
-        <div className="bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-md p-3">
-          <div className="text-xs text-center text-orange-800 dark:text-orange-200 flex items-center justify-center gap-2">
+        <button 
+          onClick={handleGuestSignIn}
+          className="w-full bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400"
+          aria-label="Iniciar sesión para guardar conversaciones permanentemente"
+        >
+          <div className="text-sm lg:text-xs text-center text-orange-800 dark:text-orange-200 flex items-center justify-center gap-2">
             <span>💡</span>
             <span>Inicia sesión para guardar permanentemente</span>
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );
