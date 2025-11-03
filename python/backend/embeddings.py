@@ -256,12 +256,13 @@ def add_pdf_to_collection(collection_name, file_path, file_name):
         }
 
 
-def get_documents(collection_name, question, limit=5):
+def get_documents(collection_name, question, limit=8):
     """
     Buscar documentos relevantes en Qdrant usando búsqueda semántica
     Genera embedding de la pregunta y busca los documentos más similares
     
     IMPORTANTE: Usa task_type=None para compatibilidad con n8n
+    Usa limit=8 por defecto para obtener mejor contexto y permitir re-ranking por fecha
     """
     from datetime import datetime
     
@@ -341,22 +342,76 @@ def get_documents(collection_name, question, limit=5):
                 print("   3. Los embeddings no coinciden (diferentes task_types)")
                 return []
             
-            relevant_docs = []
+            # Primero, construir la lista de documentos con scores
+            doc_candidates = []
             for point in points:
                 payload = point.get('payload', {})
-                # n8n usa 'content' como campo principal
                 content = payload.get('content', payload.get('text', ''))
                 
                 if content:
                     score = point.get('score', 0)
+                    doc_candidates.append({
+                        'point': point,
+                        'content': content,
+                        'score': score,
+                        'payload': payload
+                    })
+            
+            # RE-RANKING: Si la pregunta tiene fecha específica, priorizar documentos con esa fecha
+            if enriched_question != question:  # Si se enriqueció con fecha
+                print(f"🎯 Aplicando re-ranking por coincidencia de fecha exacta...")
+                
+                # Extraer los componentes de fecha de la pregunta enriquecida
+                now = datetime.now()
+                dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+                meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                
+                dia_semana = dias[now.weekday()]
+                dia_numero = str(now.day)
+                mes_actual = meses[now.month - 1]
+                
+                # Re-ordenar documentos: los que contienen la fecha exacta van primero
+                exact_matches = []
+                partial_matches = []
+                other_docs = []
+                
+                for doc in doc_candidates:
+                    content_lower = doc['content'].lower()
                     
-                    print(f"   📄 Doc encontrado (score: {score:.3f}): {content[:100]}...")
-                    
-                    relevant_docs.append(Document(
-                        doc_id=str(point.get('id', '')),
-                        content=content,
-                        metadata=payload.get('metadata', {})
-                    ))
+                    # Coincidencia EXACTA: contiene día de semana + número + mes
+                    if (dia_semana.lower() in content_lower and 
+                        dia_numero in doc['content'] and 
+                        mes_actual in content_lower):
+                        # BOOST: dar score adicional a coincidencias exactas
+                        doc['score'] = doc['score'] + 0.5  
+                        exact_matches.append(doc)
+                        print(f"   ✅ MATCH EXACTO: {doc['content'][:100]}... (score: {doc['score']:.3f})")
+                    # Coincidencia PARCIAL: solo día de semana o solo número+mes
+                    elif (dia_semana.lower() in content_lower or 
+                          (dia_numero in doc['content'] and mes_actual in content_lower)):
+                        doc['score'] = doc['score'] + 0.2
+                        partial_matches.append(doc)
+                        print(f"   🔸 MATCH PARCIAL: {doc['content'][:100]}... (score: {doc['score']:.3f})")
+                    else:
+                        other_docs.append(doc)
+                        print(f"   📄 Doc encontrado (score: {doc['score']:.3f}): {doc['content'][:100]}...")
+                
+                # Combinar: exact matches primero, luego partial, luego otros
+                doc_candidates = exact_matches + partial_matches + other_docs
+            else:
+                # Sin enriquecimiento de fecha, solo mostrar scores
+                for doc in doc_candidates:
+                    print(f"   📄 Doc encontrado (score: {doc['score']:.3f}): {doc['content'][:100]}...")
+            
+            # Convertir a objetos Document
+            relevant_docs = []
+            for doc in doc_candidates[:limit]:  # Limitar al número solicitado
+                relevant_docs.append(Document(
+                    doc_id=str(doc['point'].get('id', '')),
+                    content=doc['content'],
+                    metadata=doc['payload'].get('metadata', {})
+                ))
             
             print(f"📚 Total de documentos procesados: {len(relevant_docs)}")
             return relevant_docs
