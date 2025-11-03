@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import * as Prisma from '@prisma/client';
+const { PrismaClient } = Prisma;
 
 // Prevent multiple instances of Prisma Client in development
 declare global {
