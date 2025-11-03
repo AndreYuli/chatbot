@@ -45,19 +45,40 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ sidebarOpen, setSidebarOpen }) 
   };
   
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-      <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 py-2 lg:p-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {/* Botón hamburguesa solo en móvil */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="lg:hidden p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          aria-label="Abrir menú"
+        >
+          <svg
+            className="w-5 h-5 text-gray-600 dark:text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        
+        <h1 className="text-base lg:text-2xl font-bold text-gray-900 dark:text-white">
           {appName}
         </h1>
       </div>
       
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 lg:space-x-4">
         {/* Loading spinner - oculto con CSS en lugar de renderizado condicional */}
         <div className={`transition-opacity duration-200 ${
           status === 'loading' ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
         }`}>
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-5 h-5 lg:w-6 lg:h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
         
         {/* Usuario autenticado - oculto con CSS */}
@@ -66,7 +87,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ sidebarOpen, setSidebarOpen }) 
         }`}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            className="flex items-center space-x-2 p-1.5 lg:p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
           >
             {session?.user?.image ? (
               <Image
@@ -74,10 +95,10 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ sidebarOpen, setSidebarOpen }) 
                 alt={session.user?.name || 'Usuario'}
                 width={24}
                 height={24}
-                className="w-6 h-6 rounded-full"
+                className="w-6 h-6 lg:w-7 lg:h-7 rounded-full"
               />
             ) : (
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 lg:w-7 lg:h-7 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-bold">
                   {session?.user?.name?.charAt(0) || 'U'}
                 </span>
@@ -104,12 +125,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ sidebarOpen, setSidebarOpen }) 
           )}
         </div>
         
-        {/* Botón iniciar sesión - oculto con CSS */}
+        {/* Botón iniciar sesión - oculto con CSS - responsive */}
         <button
           onClick={handleSignIn}
           disabled={status === 'loading' || !!session}
           aria-hidden={status === 'loading' || !!session}
-          className={`px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 text-xs lg:text-sm font-medium ${
             !session && status !== 'loading' ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
           }`}
         >
