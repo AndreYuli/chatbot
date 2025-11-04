@@ -47,13 +47,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copiar archivos de next-intl
 COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
 
-# Copiar schema de Prisma para migraciones
+# Copiar schema de Prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copiar el cliente de Prisma generado
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Copiar el cliente de Prisma generado desde el directorio de pnpm
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@prisma+client@5.7.0_prisma@5.7.0/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@prisma+client@5.7.0_prisma@5.7.0/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 
