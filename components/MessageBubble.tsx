@@ -29,7 +29,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
       <div 
         className={`max-w-[85%] sm:max-w-[75%] lg:max-w-[70%] rounded-2xl lg:rounded-xl px-3 py-2.5 lg:px-4 lg:py-3 shadow-sm ${
           message.role === 'user' 
-            ? 'bg-blue-600 text-white rounded-br-md' 
+            ? 'bg-blue-500 dark:bg-blue-600/90 text-white rounded-br-md' 
             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200 dark:border-gray-700'
         } transform-gpu will-change-transform`}
       >
@@ -80,7 +80,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
         <div 
           className={`text-[10px] lg:text-xs mt-1.5 font-medium ${
             message.role === 'user' 
-              ? 'text-blue-100' 
+              ? 'text-blue-50 dark:text-blue-100' 
               : 'text-gray-500 dark:text-gray-400'
           }`}
         >
