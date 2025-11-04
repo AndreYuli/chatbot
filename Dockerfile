@@ -1,4 +1,4 @@
-FROM node:18-alpine:3.18 AS deps
+FROM node:18-alpine3.18 AS deps
 RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /app
 
@@ -7,7 +7,7 @@ RUN npm install -g pnpm@8
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:18-alpine:3.18 AS builder
+FROM node:18-alpine3.18 AS builder
 WORKDIR /app
 # Instalar OpenSSL 1.1 para Prisma en build stage
 RUN apk add --no-cache openssl1.1-compat
@@ -27,7 +27,7 @@ RUN npm install -g pnpm@8 && \
     pnpm prisma generate && \
     pnpm build
 
-FROM node:18-alpine:3.18 AS runner
+FROM node:18-alpine3.18 AS runner
 WORKDIR /app
 
 # Instalar OpenSSL 1.1 para Prisma en runtime
