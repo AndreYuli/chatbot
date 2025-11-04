@@ -21,8 +21,11 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
-      clientId: readEnvSoft('GOOGLE_CLIENT_ID'),
-      clientSecret: readEnvSoft('GOOGLE_CLIENT_SECRET'),
+      // Do not hard-fail during Docker build when GOOGLE_* are not provided yet.
+      // In runtime (container), these envs will be present via docker-compose.
+      // Setting requiredInProd: false lets the build complete; Google login will be disabled until envs are set.
+      clientId: readEnvSoft('GOOGLE_CLIENT_ID', { requiredInProd: false }),
+      clientSecret: readEnvSoft('GOOGLE_CLIENT_SECRET', { requiredInProd: false }),
     }),
   ],
   session: {
