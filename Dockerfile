@@ -1,4 +1,4 @@
-FROM node:18-alpine AS deps
+FROM node:18-alpine:3.18 AS deps
 RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /app
 
@@ -7,7 +7,7 @@ RUN npm install -g pnpm@8
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:18-alpine AS builder
+FROM node:18-alpine:3.18 AS builder
 WORKDIR /app
 # Instalar OpenSSL 1.1 para Prisma en build stage
 RUN apk add --no-cache openssl1.1-compat
@@ -19,12 +19,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXTAUTH_URL=http://localhost:3000
 ENV NEXTAUTH_SECRET=build-time-secret-will-be-replaced
 ENV NEXT_PUBLIC_APP_NAME=SAGES
+ENV N8N_BASE_URL=http://localhost:5678
+ENV N8N_WEBHOOK_PATH=/webhook/chat
+ENV N8N_API_KEY=build-time-dummy-key
 
 RUN npm install -g pnpm@8 && \
     pnpm prisma generate && \
     pnpm build
 
-FROM node:18-alpine AS runner
+FROM node:18-alpine:3.18 AS runner
 WORKDIR /app
 
 # Instalar OpenSSL 1.1 para Prisma en runtime
