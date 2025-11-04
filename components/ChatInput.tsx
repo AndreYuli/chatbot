@@ -130,10 +130,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
   
   return (
-    <div className="p-3 lg:p-4">
-      <form onSubmit={onSubmit} className="flex flex-col space-y-3">
+    <div className="p-2 sm:p-3 lg:p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <form onSubmit={onSubmit} className="flex flex-col space-y-2 sm:space-y-3">
         {/* Zona de composición unificada */}
-        <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all shadow-sm">
           {/* Selector de modelo */}
           <ModelSelector
             currentModel={currentModel}
@@ -145,21 +145,22 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <div className="border-b border-gray-200 dark:border-gray-600"></div>
           
           {/* Área de input */}
-          <div className="flex flex-col sm:flex-row gap-2 p-3 lg:p-2">
-          <div className="flex-1 flex gap-2 items-center">
+          <div className="flex gap-2 p-2 sm:p-3">
+          <div className="flex-1 flex gap-1 sm:gap-2 items-center min-w-0">
             <input
               data-testid="chat-input"
               type="text"
               value={input}
               onChange={handleInputChange}
-              placeholder={disabled ? "Crea una nueva conversación para empezar a chatear" : "Escribe tu mensaje aquí..."}
-              className="flex-1 p-3 lg:p-2 border-0 bg-transparent dark:text-white focus:outline-none text-base lg:text-sm placeholder-gray-500 dark:placeholder-gray-400 min-h-[48px] flex items-center"
+              placeholder={disabled ? "Nueva conversación para chatear" : "Escribe tu mensaje..."}
+              className="flex-1 px-2 py-2 sm:px-3 sm:py-2 border-0 bg-transparent dark:text-white focus:outline-none text-sm sm:text-base placeholder-gray-500 dark:placeholder-gray-400 min-w-0"
               disabled={isLoading || disabled}
               aria-label="Escribir mensaje"
+              style={{ fontSize: '16px' }} // Previene zoom en iOS
             />
             
-            {/* Botón de subir archivos - móviles: inline, desktop: separado */}
-            <div className="relative sm:hidden">
+            {/* Botón de subir archivos - Solo móvil */}
+            <div className="relative sm:hidden flex-shrink-0">
               <input
                 type="file"
                 id="file-upload-mobile"
@@ -170,7 +171,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
               />
               <label
                 htmlFor="file-upload-mobile"
-                className={`p-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
+                className={`p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
                   (isLoading || disabled || isUploading) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
                 aria-label="Adjuntar archivo"
@@ -178,7 +179,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
               >
                 {isUploading ? (
                   <svg 
-                    className="animate-spin h-6 w-6 text-white" 
+                    className="animate-spin h-5 w-5" 
                     xmlns="http://www.w3.org/2000/svg" 
                     fill="none" 
                     viewBox="0 0 24 24"
@@ -199,11 +200,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   </svg>
                 ) : (
                   <svg 
-                    className="h-6 w-6" 
+                    className="h-5 w-5" 
                     fill="none" 
                     stroke="currentColor" 
-                    viewBox="0 0 24 24" 
-                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
                   >
                     <path 
                       strokeLinecap="round" 
@@ -216,22 +216,22 @@ const ChatInput: React.FC<ChatInputProps> = ({
               </label>
             </div>
             
-            {/* Botón enviar - móviles: inline */}
+            {/* Botón enviar - Siempre visible en móvil */}
             <button
-              data-testid="send-button send-button-mobile"
+              data-testid="send-button"
               type="submit"
               disabled={isLoading || !input.trim() || disabled}
-              className={`sm:hidden p-3 rounded-lg transition-colors flex items-center justify-center ${
+              className={`sm:hidden flex-shrink-0 p-2 rounded-lg transition-all active:scale-95 flex items-center justify-center min-w-[44px] min-h-[44px] ${
                 isLoading || !input.trim() || disabled
                   ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-                  : 'text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                  : 'text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-md hover:shadow-lg'
               }`}
               aria-label="Enviar mensaje"
               title="Enviar mensaje"
             >
               {isLoading ? (
                 <svg 
-                  className="animate-spin h-6 w-6 text-white" 
+                  className="animate-spin h-5 w-5" 
                   xmlns="http://www.w3.org/2000/svg" 
                   fill="none" 
                   viewBox="0 0 24 24"
@@ -252,16 +252,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 </svg>
               ) : (
                 <svg 
-                  className="h-6 w-6" 
+                  className="h-5 w-5" 
                   fill="none" 
                   stroke="currentColor" 
                   strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  viewBox="0 0 24 24" 
-                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
                 >
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                   <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124z" />
                   <path d="M6.5 12h14.5" />
                 </svg>

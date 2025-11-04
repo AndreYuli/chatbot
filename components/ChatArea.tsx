@@ -36,21 +36,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const showMessages = messages.length > 0 || isLoading || streamingMessage;
 
   return (
-    <div className={`${showWelcome ? 'flex items-start' : 'h-full'} overflow-y-auto overflow-x-hidden relative chat-container scroll-smooth`}>
+    <div className="h-full overflow-y-auto overflow-x-hidden relative chat-container scroll-smooth" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       
-      {/* Mensaje de bienvenida */}
+      {/* Mensaje de bienvenida - Optimizado para móviles */}
       <div 
-        className={`pt-8 pb-4 lg:pt-12 lg:pb-6 px-6 lg:px-4 transition-all duration-300 ${
+        className={`min-h-[200px] max-h-[50vh] flex items-center justify-center px-4 py-6 transition-all duration-300 ${
           showWelcome 
             ? 'opacity-100 scale-100' 
             : 'opacity-0 scale-95 absolute top-0 left-0 w-full pointer-events-none'
         }`}
         aria-hidden={!showWelcome}
       >
-        <div className="text-center max-w-md mx-auto">
-          <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-full flex items-center justify-center mx-auto mb-6 lg:mb-8 shadow-lg">
+        <div className="text-center max-w-md w-full">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
             <svg 
-              className="w-10 h-10 lg:w-12 lg:h-12 text-white" 
+              className="w-8 h-8 sm:w-10 sm:h-10 text-white" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
@@ -63,11 +63,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               />
             </svg>
           </div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3 lg:mb-4">
-            SAGES Chat
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+            Asistente de Escuela Sabática
           </h2>
-          <p className="text-base lg:text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-            Escribe tu mensaje para comenzar una conversación
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+            ¿Tienes preguntas sobre la lección? Estoy aquí para ayudarte a profundizar en tu estudio
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import ChatHeader from '@/components/ChatHeader';
 
 // Contexto para el sidebar
@@ -24,9 +24,32 @@ export default function ChatLayoutClient({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Fix viewport height para móviles
+  useEffect(() => {
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+
+    return () => {
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
+  }, []);
+
   return (
     <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
-      <div className="flex h-screen h-[100dvh] bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div 
+        className="flex bg-gray-50 dark:bg-gray-900 overflow-hidden" 
+        style={{ 
+          height: 'calc(var(--vh, 1vh) * 100)',
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+      >
         <div className="flex-1 flex flex-col overflow-hidden h-full">
           <ChatHeader 
             sidebarOpen={sidebarOpen} 
