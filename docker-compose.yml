@@ -49,7 +49,7 @@ services:
     networks:
       - chatbot_internal
       - traefik_public
-      - postgres_default
+      - general_network
     deploy:
       resources:
         limits:
@@ -72,5 +72,5 @@ networks:
   chatbot_internal:
   traefik_public:
     external: true
-  postgres_default:
+  general_network:
     external: true
