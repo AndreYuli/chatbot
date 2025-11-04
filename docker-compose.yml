@@ -12,7 +12,6 @@ services:
       - QDRANT_URL=${QDRANT_URL}
       - QDRANT_API_KEY=${QDRANT_API_KEY}
       - QDRANT_COLLECTION=${QDRANT_COLLECTION}
-      - TZ=${TZ:-America/Bogota}
     volumes:
       - backend_pdfs:/app/pdf_files
       - backend_cache:/app/cache
@@ -43,13 +42,11 @@ services:
       - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
       - DEFAULT_LOCALE=${DEFAULT_LOCALE}
       - SUPPORTED_LOCALES=${SUPPORTED_LOCALES}
-      - TZ=${TZ:-America/Bogota}
     depends_on:
       - backend
     networks:
       - chatbot_internal
       - traefik_public
-      - general_network
     deploy:
       resources:
         limits:
@@ -71,6 +68,4 @@ volumes:
 networks:
   chatbot_internal:
   traefik_public:
-    external: true
-  general_network:
     external: true
