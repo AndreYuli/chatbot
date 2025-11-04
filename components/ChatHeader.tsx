@@ -72,91 +72,80 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ sidebarOpen, setSidebarOpen }) 
       </div>
       
       <div className="flex items-center gap-2 lg:gap-4 flex-shrink-0">
-        {/* Loading spinner - oculto con CSS en lugar de renderizado condicional */}
-        <div className={`transition-opacity duration-200 ${
-          status === 'loading' ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
-        }`}>
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-        </div>
+        {/* Loading spinner */}
+        {status === 'loading' && (
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+        )}
         
-        {/* Usuario autenticado - oculto con CSS */}
-        <div className={`relative transition-opacity duration-200 ${
-          session ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
-        }`}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors duration-200 touch-manipulation min-h-touch"
-            aria-label="Menú de usuario"
-          >
-            {session?.user?.image ? (
-              <Image
-                src={session.user.image}
-                alt={session.user?.name || 'Usuario'}
-                width={32}
-                height={32}
-                className="w-8 h-8 lg:w-6 lg:h-6 rounded-full"
-              />
-            ) : (
-              <div className="w-8 h-8 lg:w-6 lg:h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm lg:text-xs font-bold">
-                  {session?.user?.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-            )}
-            <span className="text-sm text-gray-700 dark:text-gray-300 hidden md:block">
-              {session?.user?.name || 'Usuario'}
-            </span>
-          </button>
+        {/* Usuario autenticado */}
+        {session && (
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 px-2 py-1.5 lg:px-3 lg:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors touch-manipulation"
+              aria-label="Menú de usuario"
+            >
+              {session?.user?.image ? (
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || 'Usuario'}
+                  width={32}
+                  height={32}
+                  className="w-7 h-7 lg:w-8 lg:h-8 rounded-full"
+                />
+              ) : (
+                <div className="w-7 h-7 lg:w-8 lg:h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden md:inline">
+                {session?.user?.name || 'Usuario'}
+              </span>
+              <svg className="w-4 h-4 text-gray-500 hidden md:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-          {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 lg:w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
-              <div className="px-4 py-3 lg:py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                <div className="font-medium text-base lg:text-sm">{session?.user?.name}</div>
-                <div className="text-sm lg:text-xs text-gray-500 dark:text-gray-400 truncate">{session?.user?.email}</div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="block w-full text-left px-4 py-3 lg:py-2 text-base lg:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          )}
-        </div>
+            {showUserMenu && (
+              <>
+                {/* Overlay para cerrar el menú */}
+                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                
+                <div className="absolute right-0 mt-2 w-64 lg:w-56 bg-white dark:bg-gray-800 rounded-xl lg:rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <div className="font-medium text-sm text-gray-900 dark:text-white">{session?.user?.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{session?.user?.email}</div>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Cerrar sesión
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         
-        {/* Botón de invitado clickeable para iniciar sesión */}
-        <div className={`transition-opacity duration-200 ${
-          isGuest && isActivelyUsing ? 'opacity-100 flex items-center' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
-        }`}>
+        {/* Botón "Iniciar sesión" - Siempre visible cuando NO está autenticado */}
+        {!session && status !== 'loading' && (
           <button
             onClick={handleSignIn}
-            className="flex items-center gap-1 lg:gap-2 px-2 py-1 lg:px-3 lg:py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-900/50 rounded-lg text-xs lg:text-sm transition-colors duration-200 touch-manipulation min-h-touch"
-            title="Iniciar sesión para guardar conversaciones"
+            className="flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg lg:rounded-md transition-all text-xs lg:text-sm font-medium shadow-sm hover:shadow touch-manipulation"
           >
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-              <path d="M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
-              <path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855" />
+            <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span className="font-medium hidden sm:inline">Invitado</span>
-            <svg className="w-3 h-3 opacity-60 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <span className="hidden sm:inline">Iniciar sesión</span>
+            <span className="sm:hidden">Entrar</span>
           </button>
-        </div>
-
-        {/* Botón iniciar sesión - solo mostrar si NO está usando el chat */}
-        <button
-          onClick={handleSignIn}
-          disabled={status === 'loading' || !!session}
-          aria-hidden={status === 'loading' || !!session || isActivelyUsing}
-          className={`px-3 py-2 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-all duration-200 text-sm lg:text-sm font-medium shadow-sm hover:shadow-md touch-manipulation min-h-touch ${
-            !session && status !== 'loading' && !isActivelyUsing ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden invisible'
-          }`}
-        >
-          Iniciar sesión
-        </button>
+        )}
       </div>
     </header>
   );

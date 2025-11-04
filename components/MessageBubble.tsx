@@ -24,32 +24,32 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
   return (
     <div 
       data-testid={message.role === 'user' ? 'message-user' : 'message-assistant'}
-      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4 lg:mb-6`}
+      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-3 lg:mb-4 px-2 lg:px-0`}
     >
       <div 
-        className={`max-w-[90%] lg:max-w-[80%] rounded-2xl lg:rounded-lg px-4 py-3 lg:py-2 shadow-sm ${
+        className={`max-w-[85%] sm:max-w-[75%] lg:max-w-[70%] rounded-2xl lg:rounded-xl px-3 py-2.5 lg:px-4 lg:py-3 shadow-sm ${
           message.role === 'user' 
-            ? 'bg-blue-600 text-white rounded-br-sm' 
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm border border-gray-200 dark:border-gray-700'
-        }`}
+            ? 'bg-blue-600 text-white rounded-br-md' 
+            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200 dark:border-gray-700'
+        } transform-gpu will-change-transform`}
       >
-        <div className="prose prose-sm lg:prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-headings:my-2">
+        <div className="prose prose-sm max-w-none dark:prose-invert">
           {message.role === 'assistant' ? (
             <ReactMarkdown
               components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-base lg:text-sm">{children}</p>,
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-sm lg:text-sm">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
                 em: ({ children }) => <em className="italic">{children}</em>,
-                ul: ({ children }) => <ul className="space-y-1 mb-3 pl-4">{children}</ul>,
-                ol: ({ children }) => <ol className="space-y-1 mb-3 pl-4">{children}</ol>,
-                li: ({ children }) => <li className="leading-relaxed text-base lg:text-sm">{children}</li>,
-                h1: ({ children }) => <h1 className="text-xl lg:text-lg font-bold mb-2 mt-3">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-lg lg:text-base font-bold mb-2 mt-3">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-base lg:text-sm font-bold mb-2 mt-2">{children}</h3>,
+                ul: ({ children }) => <ul className="space-y-1 my-2 pl-4 list-disc">{children}</ul>,
+                ol: ({ children }) => <ol className="space-y-1 my-2 pl-4 list-decimal">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed text-sm">{children}</li>,
+                h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-bold mb-1.5 mt-2 first:mt-0">{children}</h3>,
                 code: ({ children, className }) => {
                   const isInline = !className;
                   return isInline ? (
-                    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono">
+                    <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs font-mono text-gray-800 dark:text-gray-200">
                       {children}
                     </code>
                   ) : (
@@ -57,29 +57,34 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming = fa
                   );
                 },
                 pre: ({ children }) => (
-                  <pre className="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-sm">
+                  <pre className="bg-gray-100 dark:bg-gray-900 p-3 rounded-lg overflow-x-auto text-xs my-2 border border-gray-200 dark:border-gray-700">
                     {children}
                   </pre>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-blue-500 pl-3 py-1 my-2 text-gray-700 dark:text-gray-300 italic">
+                    {children}
+                  </blockquote>
                 ),
               }}
             >
               {message.content}
             </ReactMarkdown>
           ) : (
-            <div className="whitespace-pre-wrap text-base lg:text-sm leading-relaxed">{message.content}</div>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed break-words">{message.content}</div>
           )}
           {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse"></span>
+            <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse rounded-sm"></span>
           )}
         </div>
         <div 
-          className={`text-xs lg:text-xs mt-2 lg:mt-1 ${
+          className={`text-[10px] lg:text-xs mt-1.5 font-medium ${
             message.role === 'user' 
               ? 'text-blue-100' 
               : 'text-gray-500 dark:text-gray-400'
           }`}
         >
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
     </div>

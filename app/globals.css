@@ -50,10 +50,6 @@ body {
   /* CRÍTICO: Prevenir scroll rebotón (overscroll) */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
 }
 
 /* Mejoras de accesibilidad y UX */
@@ -103,17 +99,33 @@ a {
   overflow-x: hidden;
 }
 
-/* Prevenir scroll en el documento raíz */
-html {
-  overscroll-behavior: none;
-  overflow: hidden;
-  height: 100%;
+/* Prevenir scroll en el documento raíz - SOLO EN MÓVILES */
+@media (max-width: 767px) {
+  html, body {
+    overscroll-behavior-y: none;
+    height: 100%;
+    position: fixed;
+    width: 100%;
+  }
+  
+  /* El contenedor principal debe ser scrolleable */
+  #__next {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height para móviles */
+    overflow: hidden;
+    position: relative;
+  }
 }
 
-/* El contenedor principal debe manejar el scroll */
-#__next {
-  height: 100%;
-  overflow: hidden;
+/* En desktop, comportamiento normal */
+@media (min-width: 768px) {
+  html {
+    overscroll-behavior: none;
+  }
+  
+  #__next {
+    min-height: 100vh;
+  }
 }
 
 /* Prevenir zoom en inputs en iOS */

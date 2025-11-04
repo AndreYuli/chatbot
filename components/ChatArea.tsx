@@ -36,25 +36,24 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const showMessages = messages.length > 0 || isLoading || streamingMessage;
 
   return (
-    <div className="h-full overflow-y-auto relative chat-container">
+    <div className="h-full overflow-y-auto overflow-x-hidden relative chat-container scroll-smooth">
       
-      {/* Mensaje de bienvenida - optimizado con transform en lugar de opacity */}
+      {/* Mensaje de bienvenida */}
       <div 
-        className={`flex items-center justify-center h-full transition-all duration-200 ${
+        className={`flex items-center justify-center h-full transition-all duration-300 ${
           showWelcome 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 -translate-y-2 absolute top-0 left-0 w-full pointer-events-none'
+            ? 'opacity-100 scale-100' 
+            : 'opacity-0 scale-95 absolute top-0 left-0 w-full pointer-events-none'
         }`}
         aria-hidden={!showWelcome}
       >
-        <div className="text-center max-w-md px-4">
-          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6">
+        <div className="text-center max-w-md px-6 lg:px-4">
+          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 shadow-lg">
             <svg 
-              className="w-8 h-8 lg:w-10 lg:h-10 text-blue-600 dark:text-blue-400" 
+              className="w-8 h-8 lg:w-10 lg:h-10 text-white" 
               fill="none" 
               stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
             >
               <path 
                 strokeLinecap="round" 
@@ -64,21 +63,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               />
             </svg>
           </div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 lg:mb-3">
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-2">
             SAGES Chat
           </h2>
-          <p className="text-base lg:text-lg text-gray-600 dark:text-gray-400">
-            Escribe tu mensaje para comenzar
+          <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400">
+            Escribe tu mensaje para comenzar una conversación
           </p>
         </div>
       </div>
       
-      {/* Lista de mensajes - optimizado con transform */}
+      {/* Lista de mensajes */}
       <div 
-        className={`space-y-4 lg:space-y-6 p-3 lg:p-4 transition-all duration-200 ${
+        className={`transition-all duration-300 py-4 ${
           showMessages 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-2 absolute top-0 left-0 w-full pointer-events-none'
+            ? 'opacity-100' 
+            : 'opacity-0 absolute top-0 left-0 w-full pointer-events-none'
         }`}
         aria-hidden={!showMessages}
       >
@@ -103,35 +102,34 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         
         {error && (
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900 dark:to-orange-900 border-2 border-red-300 dark:border-red-600 rounded-xl p-6 shadow-lg">
-            <div className="flex items-start">
+          <div className="mx-2 lg:mx-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl lg:rounded-xl p-4 lg:p-5 shadow-sm mb-4">
+            <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center">
                   <svg 
-                    className="h-6 w-6 text-red-600 dark:text-red-300" 
+                    className="h-5 w-5 text-red-600 dark:text-red-400" 
                     fill="none" 
                     stroke="currentColor" 
-                    viewBox="0 0 24 24" 
-                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
                   >
                     <path 
                       strokeLinecap="round" 
                       strokeLinejoin="round" 
                       strokeWidth={2} 
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
                 </div>
               </div>
-              <div className="ml-4 flex-1">
-                <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">
-                  ⚠️ Ocurrió un error
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm lg:text-base font-semibold text-red-900 dark:text-red-100 mb-1">
+                  Ocurrió un error
                 </h3>
-                <p className="text-base text-red-800 dark:text-red-200 mb-3">
+                <p className="text-xs lg:text-sm text-red-800 dark:text-red-200 mb-2 break-words">
                   {error}
                 </p>
-                <p className="text-sm text-red-700 dark:text-red-300">
-                  Si el problema persiste, intenta recargar la página o contactar al administrador.
+                <p className="text-xs text-red-700 dark:text-red-300">
+                  Si el problema persiste, intenta recargar la página
                 </p>
               </div>
             </div>
@@ -139,13 +137,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         
         {isLoading && !streamingMessage && (
-          <div className="flex items-center gap-3 py-4">
+          <div className="flex items-center gap-2 py-4 px-4">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
-            <span className="text-gray-600 dark:text-gray-400 text-sm italic">
+            <span className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm">
               Escribiendo...
             </span>
           </div>

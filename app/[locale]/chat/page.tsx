@@ -194,7 +194,7 @@ export default function ChatPage() {
   };
   
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative overflow-hidden">
       {/* Modal de cambio de modelo */}
       <ModelChangeModal
         isOpen={showModelChangeModal}
@@ -229,8 +229,8 @@ export default function ChatPage() {
       </div>
       
       {/* Área principal del chat */}
-      <div className="flex-1 flex flex-col h-full min-w-0">
-        <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
           <ChatArea 
             messages={messages}
             streamingMessage={streamingMessage}
@@ -241,7 +241,7 @@ export default function ChatPage() {
           />
         </div>
         
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3 lg:p-4">
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
           <ChatInput
             input={input}
             handleInputChange={handleInputChange}
