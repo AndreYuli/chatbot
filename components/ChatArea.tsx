@@ -36,7 +36,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const showMessages = messages.length > 0 || isLoading || streamingMessage;
 
   return (
-    <div className="h-full overflow-y-auto relative">
+    <div className="h-full overflow-y-auto relative chat-container">
       
       {/* Mensaje de bienvenida - optimizado con transform en lugar de opacity */}
       <div 

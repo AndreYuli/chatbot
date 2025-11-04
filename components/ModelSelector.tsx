@@ -59,7 +59,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           <span className="text-base lg:text-sm font-medium text-gray-900 dark:text-white truncate">
             {currentModelData?.name}
           </span>
-          <span className="text-sm lg:text-xs text-gray-500 dark:text-gray-400 truncate">
+          {/* Ocultar descripción técnica en móviles para ahorrar espacio */}
+          <span className="hidden lg:block text-xs text-gray-500 dark:text-gray-400 truncate">
             {currentModelData?.description}
           </span>
         </div>

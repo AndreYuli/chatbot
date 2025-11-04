@@ -26,8 +26,8 @@ export default function ChatLayoutClient({
 
   return (
     <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="flex-1 flex flex-col">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <ChatHeader 
             sidebarOpen={sidebarOpen} 
             setSidebarOpen={setSidebarOpen} 

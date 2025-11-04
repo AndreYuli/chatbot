@@ -46,6 +46,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%; /* Previene zoom automático en iOS */
   font-feature-settings: 'kern' 1; /* Mejora el kerning */
+  
+  /* CRÍTICO: Prevenir scroll rebotón (overscroll) */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Mejoras de accesibilidad y UX */
@@ -85,6 +93,27 @@ a {
 }/* Optimizaciones de scroll */
 .scroll-smooth {
   scroll-behavior: smooth;
+}
+
+/* CRÍTICO: Configuración de scroll para contenedores de chat */
+.chat-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Prevenir scroll en el documento raíz */
+html {
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* El contenedor principal debe manejar el scroll */
+#__next {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Prevenir zoom en inputs en iOS */
