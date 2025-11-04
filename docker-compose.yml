@@ -47,6 +47,7 @@ services:
     networks:
       - chatbot_internal
       - traefik_public
+      - general_network
     deploy:
       resources:
         limits:
@@ -68,4 +69,6 @@ volumes:
 networks:
   chatbot_internal:
   traefik_public:
+    external: true
+  general_network:
     external: true
