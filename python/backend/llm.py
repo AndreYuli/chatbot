@@ -181,7 +181,7 @@ Cada lección de Escuela Sabática tiene DOS niveles:
 ---
 
 **MATERIAL DISPONIBLE:**
-{information if information.strip() else "No se encontró material relevante en la base de conocimiento para esta consulta."}
+{information if information.strip() else "No se encontró material relevante en la base de conocimiento para esta consulta, puedes subir el archivo PDF de la lección."}
 
 ---
 
