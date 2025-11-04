@@ -1,5 +1,5 @@
 FROM node:18-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /app
 
 RUN npm install -g pnpm@8
@@ -9,24 +9,16 @@ RUN pnpm install --frozen-lockfile
 
 FROM node:18-alpine AS builder
 WORKDIR /app
+# Instalar OpenSSL 1.1 para Prisma en build stage
+RUN apk add --no-cache openssl1.1-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Variables de entorno necesarias para el build
-ARG DATABASE_URL
-ARG NEXTAUTH_SECRET
-ARG NEXTAUTH_URL
-ARG GOOGLE_CLIENT_ID
-ARG GOOGLE_CLIENT_SECRET
-ARG NEXT_PUBLIC_APP_NAME
-
-ENV DATABASE_URL=${DATABASE_URL}
-ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-ENV NEXTAUTH_URL=${NEXTAUTH_URL}
-ENV GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-ENV GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+# Variables de entorno necesarias para el build - usar valores dummy para evitar errores de URL
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXTAUTH_URL=http://localhost:3000
+ENV NEXTAUTH_SECRET=build-time-secret-will-be-replaced
+ENV NEXT_PUBLIC_APP_NAME=SAGES
 
 RUN npm install -g pnpm@8 && \
     pnpm prisma generate && \
@@ -35,8 +27,8 @@ RUN npm install -g pnpm@8 && \
 FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Instalar OpenSSL para Prisma
-RUN apk add --no-cache openssl
+# Instalar OpenSSL 1.1 para Prisma en runtime
+RUN apk add --no-cache openssl1.1-compat
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
