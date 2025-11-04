@@ -51,9 +51,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copiar el cliente de Prisma generado desde el directorio de pnpm
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@prisma+client@5.7.0_prisma@5.7.0/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@prisma+client@5.7.0_prisma@5.7.0/node_modules/@prisma ./node_modules/@prisma
+# Copiar todo el directorio .pnpm para resolver dependencias de Prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm ./node_modules/.pnpm
 
 USER nextjs
 
