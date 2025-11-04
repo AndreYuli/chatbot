@@ -36,18 +36,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const showMessages = messages.length > 0 || isLoading || streamingMessage;
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden relative chat-container scroll-smooth">
+    <div className={`${showWelcome ? 'flex items-start' : 'h-full'} overflow-y-auto overflow-x-hidden relative chat-container scroll-smooth`}>
       
       {/* Mensaje de bienvenida */}
       <div 
-        className={`flex items-start lg:items-center justify-center h-full pt-12 lg:pt-0 transition-all duration-300 ${
+        className={`pt-8 pb-4 lg:pt-12 lg:pb-6 px-6 lg:px-4 transition-all duration-300 ${
           showWelcome 
             ? 'opacity-100 scale-100' 
             : 'opacity-0 scale-95 absolute top-0 left-0 w-full pointer-events-none'
         }`}
         aria-hidden={!showWelcome}
       >
-        <div className="text-center max-w-md px-6 lg:px-4">
+        <div className="text-center max-w-md mx-auto">
           <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-full flex items-center justify-center mx-auto mb-6 lg:mb-8 shadow-lg">
             <svg 
               className="w-10 h-10 lg:w-12 lg:h-12 text-white" 
