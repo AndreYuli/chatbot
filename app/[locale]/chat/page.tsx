@@ -39,7 +39,8 @@ export default function ChatPage() {
     error,
     setConversationId,
     conversationId,
-    resetChat
+    resetChat,
+    handleSuggestedQuestion
   } = useChat();
   
   // Memoizar el callback para evitar re-renders del sidebar
@@ -237,7 +238,7 @@ export default function ChatPage() {
             sources={sources}
             isLoading={isLoading}
             error={error}
-
+            onSuggestedQuestionClick={handleSuggestedQuestion}
           />
         </div>
         

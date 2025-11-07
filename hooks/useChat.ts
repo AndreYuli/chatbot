@@ -391,9 +391,6 @@ export function useChat() {
       const userInput = input;
       setInput('');
       
-      // Create a new AbortController for this request
-      const abortController = new AbortController();
-
       const ensuredConversationId = await ensureConversation(userInput, model);
 
       const userMessage: Message = {
@@ -408,6 +405,9 @@ export function useChat() {
         saveGuestMessages(ensuredConversationId, next);
         return next;
       });
+
+      // Create a new AbortController for this request
+      const abortController = new AbortController();
 
       // Route to the appropriate endpoint based on model
       const endpoint = model === 'python' ? '/api/chat/python' : '/api/chat/send';
@@ -552,6 +552,17 @@ export function useChat() {
     setInput('');
   }, []);
 
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+    // Auto-submit después de un pequeño delay para que el usuario vea la pregunta
+    setTimeout(() => {
+      const syntheticEvent = {
+        preventDefault: () => {},
+      } as React.FormEvent;
+      handleSubmit(syntheticEvent, 'python'); // Usar Python por defecto
+    }, 100);
+  };
+
   return {
     messages,
     input,
@@ -565,5 +576,6 @@ export function useChat() {
     setConversationId,
     conversationId,
     resetChat,
+    handleSuggestedQuestion,
   };
 }
