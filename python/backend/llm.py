@@ -118,22 +118,22 @@ def query_llm(question, relevant_documents, context_lesson=None, max_retries=3):
 **REGLA FUNDAMENTAL:**
 Las preguntas que no especifican una lección/fecha diferente se refieren a **{context_lesson}**.
 
-**🎯 PRIORIDAD DE BÚSQUEDA:**
+**PRIORIDAD DE BÚSQUEDA:**
 1. **PRIMERO:** Busca en el MATERIAL DISPONIBLE sobre **{context_lesson}**
 2. **SEGUNDO:** Si no encuentras ahí, busca en otras lecciones disponibles
 3. **TERCERO:** Informa al usuario de dónde proviene la información
 
-**✅ Si encuentras la respuesta sobre {context_lesson}:**
+**Si encuentras la respuesta sobre {context_lesson}:**
 [Responde normalmente sin aclaraciones adicionales]
 
-**⚠️ Si encuentras la respuesta en OTRA lección:**
+**Si encuentras la respuesta en OTRA lección:**
 ⚠️ Esta información proviene de la **Lección [X] ([fechas])**, no de {context_lesson} que estabas consultando.
 
 [Respuesta con el contenido encontrado...]
 
 ¿Quieres que continúe con la Lección [X] o prefieres volver a {context_lesson}?
 
-**🔍 Si NO encuentras la respuesta en ninguna lección:**
+**Si NO encuentras la respuesta en ninguna lección:**
 🔍 No encontré información sobre [tema] en {context_lesson} ni en las otras lecciones disponibles.
 
 Si tienes el PDF de una lección que trate este tema, puedes subirlo.
