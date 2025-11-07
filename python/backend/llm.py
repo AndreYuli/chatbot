@@ -110,9 +110,8 @@ def query_llm(question, relevant_documents, context_lesson=None, max_retries=3):
 
 ---
 
-🧠 **MEMORIA CONVERSACIONAL - CONTEXTO DE LECCIÓN:**
+{f"""🧠 **MEMORIA CONVERSACIONAL - CONTEXTO DE LECCIÓN:**
 
-{f'''
 **CONTEXTO DETECTADO:** Estás consultando sobre **{context_lesson}**
 
 **REGLA FUNDAMENTAL:**
@@ -134,12 +133,12 @@ Las preguntas que no especifican una lección/fecha diferente se refieren a **{c
 ¿Quieres que continúe con la Lección [X] o prefieres volver a {context_lesson}?
 
 **Si NO encuentras la respuesta en ninguna lección:**
-🔍 No encontré información sobre [tema] en {context_lesson} ni en las otras lecciones disponibles.
+No encontré información sobre [tema] en {context_lesson} ni en las otras lecciones disponibles.
 
 Si tienes el PDF de una lección que trate este tema, puedes subirlo.
-''' if context_lesson else ''}
 
 ---
+""" if context_lesson else ""}
 
 🔍 **TIPOS DE PREGUNTAS QUE RECIBIRÁS:**
 
