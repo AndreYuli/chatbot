@@ -72,10 +72,10 @@ def query_llm(question, relevant_documents, context_lesson=None, max_retries=3):
         for document in relevant_documents:
             information += document.content + '\n\n'
     
-    # Construcción separada del bloque de memoria conversacional para evitar errores de sintaxis con emojis
+    # Construcción separada del bloque de memoria conversacional (sin triple quotes anidadas)
     if context_lesson:
         memory_context = (
-            f"""MEMORIA CONVERSACIONAL - CONTEXTO DE LECCIÓN\n\n"
+            f"MEMORIA CONVERSACIONAL - CONTEXTO DE LECCIÓN\n\n"
             f"CONTEXTO DETECTADO: Estás consultando sobre **{context_lesson}**\n\n"
             f"REGLA FUNDAMENTAL:\n"
             f"Las preguntas que no especifican una lección/fecha diferente se refieren a **{context_lesson}**.\n\n"
